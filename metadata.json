@@ -1,0 +1,6 @@
+{
+  "name": "Comfort Financial Budgeting",
+  "description": "A Business and Personal Financial Management Solution",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
