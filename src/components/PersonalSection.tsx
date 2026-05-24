@@ -310,7 +310,7 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
               <div className="flex justify-between items-start mb-3">
                 <span className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider font-sans">Total Income</span>
                 <span className="p-2 bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-lg">
-                  <TrendingDown size={18} />
+                  <TrendingUp size={18} />
                 </span>
               </div>
               <div className="text-2xl font-black font-sans text-slate-900 dark:text-white">{formatCurrency(totalIncome, currency)}</div>
@@ -323,7 +323,7 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
               <div className="flex justify-between items-start mb-3">
                 <span className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider font-sans">Total Expenses</span>
                 <span className="p-2 bg-red-100/80 text-red-700 dark:bg-red-950/40 dark:text-red-400 rounded-lg">
-                  <TrendingUp size={18} />
+                  <TrendingDown size={18} />
                 </span>
               </div>
               <div className="text-2xl font-black font-sans text-slate-900 dark:text-white">{formatCurrency(totalExpenses, currency)}</div>
