@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Wallet, UserCog, Download, Upload, Trash2, Save, 
   Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2, Heart, Scale, ShieldCheck,
-  Sun, Moon
+  Sun, Moon, Sparkles, Smartphone, Laptop, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
@@ -89,8 +89,48 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppInstallable, setIsAppInstallable] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [pwaInstalledStatus, setPwaInstalledStatus] = useState<boolean>(() => {
+    try {
+      return window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    } catch {
+      return false;
+    }
+  });
+
+  const [platformInfo, setPlatformInfo] = useState({
+    isIOS: false,
+    isSafari: false,
+    isAndroid: false,
+    isChrome: false,
+    isFirefox: false,
+    isEdge: false,
+    isDesktop: true
+  });
 
   useEffect(() => {
+    // Environment detection
+    const ua = window.navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const isChrome = /Chrome|Chromium|CriOS/i.test(ua);
+    const isFirefox = /Firefox/i.test(ua);
+    const isEdge = /Edg/i.test(ua);
+    const isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+
+    setPlatformInfo({
+      isIOS,
+      isSafari,
+      isAndroid,
+      isChrome,
+      isFirefox,
+      isEdge,
+      isDesktop
+    });
+
+    setPwaInstalledStatus(isStandalone);
+
     const handleBeforeInstallPrompt = (e: Event) => {
       // Prevent automatic prompt show
       e.preventDefault();
@@ -99,33 +139,66 @@ export default function App() {
       setIsAppInstallable(true);
       
       setNotification({
-        title: 'WebApp Install Ready 📱',
-        message: 'Comfort Budgeting can now be installed directly on your phone or desktop computer as a Native App, supporting offline capabilities!',
+        title: 'Native Companion App Ready 📱',
+        message: 'Comfort Budgeting can now be installed directly on your device. Click "Install Mobile App" in the sidebar for single-tap download!',
         type: 'info'
       });
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // If running in standalone mode, don't show custom install buttons
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    const handleAppInstalled = () => {
+      console.log('[Comfort App] App was installed successfully via event listener.');
       setIsAppInstallable(false);
+      setDeferredPrompt(null);
+      setPwaInstalledStatus(true);
+      
+      setNotification({
+        title: 'App Installed! 🎉',
+        message: 'Thank you for installing Comfort Budgeting! It is now accessible directly from your application launcher or home screen.',
+        type: 'success'
+      });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Dynamic display mode observation
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleDisplayChange = (evt: MediaQueryListEvent) => {
+      setPwaInstalledStatus(evt.matches);
+    };
+    try {
+      mediaQuery.addEventListener('change', handleDisplayChange);
+    } catch {
+      mediaQuery.addListener(handleDisplayChange);
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      try {
+        mediaQuery.removeEventListener('change', handleDisplayChange);
+      } catch {
+        mediaQuery.removeListener(handleDisplayChange);
+      }
     };
   }, []);
 
   const handleInstallApp = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`[Comfort App] User prompt response outcome: ${outcome}`);
-      setDeferredPrompt(null);
-      setIsAppInstallable(false);
+      try {
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`[Comfort App] User prompt response outcome: ${outcome}`);
+        if (outcome === 'accepted') {
+          setPwaInstalledStatus(true);
+          setIsAppInstallable(false);
+          setDeferredPrompt(null);
+        }
+      } catch (err) {
+        console.error('[Comfort Install App Prompt Error]', err);
+      }
     } else {
-      // Prompt modal fallback guide for Safari iOS, macOS & unsupported environments
+      // Fallback modal guides
       setShowInstallGuide(true);
     }
   };
@@ -497,20 +570,45 @@ export default function App() {
           </div>
 
           {/* Native PWA Installation CTA */}
-          <div className="p-3 mb-3 bg-teal-500/5 dark:bg-teal-500/10 border border-teal-500/20 rounded-xl space-y-1">
-            <div className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
-              Native Mobile Companion
+          <div className="p-3 mb-3 bg-teal-500/5 dark:bg-teal-500/10 border border-teal-500/20 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
+                Companion App
+              </span>
+              {pwaInstalledStatus && (
+                <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 text-[8px] font-extrabold rounded-sm uppercase tracking-wide">
+                  <Check size={8} /> Active
+                </span>
+              )}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-              Access account offline anytime with premium native app setup!
-            </p>
-            <button
-              onClick={handleInstallApp}
-              className="w-full mt-1.5 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition duration-200 cursor-pointer bg-teal-600 hover:bg-teal-700 text-white shadow-sm hover:shadow"
-            >
-              <Download size={13} className="shrink-0" />
-              <span>Install Mobile App</span>
-            </button>
+            
+            {pwaInstalledStatus ? (
+              <div className="space-y-1">
+                <p className="text-[10px] text-teal-700 dark:text-teal-300 font-semibold leading-tight">
+                  Running standalone client
+                </p>
+                <span className="text-[9px] text-slate-400 block leading-tight font-sans">
+                  Uncompromised security, local sandbox engine active.
+                </span>
+              </div>
+            ) : (
+              <>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                  Access accounts offline anytime on your home screen launcher.
+                </p>
+                <button
+                  onClick={handleInstallApp}
+                  className={`w-full mt-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
+                    isAppInstallable 
+                      ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-sm shadow-teal-500/25' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-850 dark:text-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {isAppInstallable ? <Sparkles size={11.5} className="text-amber-300 fill-amber-300 shrink-0" /> : <Download size={11.5} className="shrink-0" />}
+                  <span>{isAppInstallable ? 'Install Native App' : 'How to Install'}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Footer User Avatar summary card */}
@@ -1053,43 +1151,64 @@ export default function App() {
 
               {/* Instructions List */}
               <div className="py-4 space-y-4 overflow-y-auto text-xs text-slate-650 dark:text-slate-350">
-                <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed text-[11px]">
-                  Comfort Budgeting is packaged with complete Progressive Web App (PWA) compliance. Install it in seconds to enjoy rich full-screen visuals, offline access capability, and zero memory overhead.
+                <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed text-[11px] font-sans">
+                  Comfort Budgeting is custom customized for your environment. Install it in seconds to unlock full-screen viewports, quick long-press workspace shortcuts, and total offline readiness.
                 </p>
 
                 <div className="space-y-3.5 pt-1">
                   {/* iOS Safari */}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-805/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center gap-1.5">
-                      🍏 Apple iOS (Safari Browser)
+                  <div className={`p-3 border rounded-xl space-y-1.5 transition-all duration-300 ${
+                    platformInfo.isIOS 
+                      ? 'border-teal-500 bg-teal-500/[0.04] dark:bg-teal-500/[0.06] shadow-inner' 
+                      : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-850/40 text-slate-500 dark:text-slate-400'
+                  }`}>
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">🍏 Apple iOS (Safari Browser)</span>
+                      {platformInfo.isIOS && (
+                        <span className="text-[8px] bg-teal-600 font-extrabold text-white px-1.5 py-0.5 rounded uppercase tracking-wider">Your Device</span>
+                      )}
                     </span>
-                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                      <li>Tap the browser screen <strong className="text-teal-600 dark:text-teal-400">Share</strong> icon (rectangle with an up-pointing arrow).</li>
-                      <li>Scroll down the options list and find/tap <strong className="text-teal-650 dark:text-teal-400">"Add to Home Screen"</strong>.</li>
-                      <li>Click <strong className="font-bold">Add</strong> at top right to finalize placement.</li>
+                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] font-medium leading-relaxed">
+                      <li>Tap the browser's native <strong className="text-teal-600 dark:text-teal-400 font-bold">Share</strong> button at bottom center.</li>
+                      <li>In the share sheet sheet, select <strong className="text-teal-650 dark:text-teal-450 font-bold">"Add to Home Screen"</strong>.</li>
+                      <li>Press <strong className="font-bold text-teal-600 dark:text-teal-400">Add</strong> at top right to instantly pin the app.</li>
                     </ol>
                   </div>
 
                   {/* Android Chrome */}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-805/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center gap-1.5">
-                      🤖 Android & Chrome Mobile
+                  <div className={`p-3 border rounded-xl space-y-1.5 transition-all duration-300 ${
+                    platformInfo.isAndroid 
+                      ? 'border-teal-500 bg-teal-500/[0.04] dark:bg-teal-500/[0.06] shadow-inner' 
+                      : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-850/40 text-slate-500 dark:text-slate-400'
+                  }`}>
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">🤖 Android & Chrome Mobile</span>
+                      {platformInfo.isAndroid && (
+                        <span className="text-[8px] bg-teal-600 font-extrabold text-white px-1.5 py-0.5 rounded uppercase tracking-wider">Your Device</span>
+                      )}
                     </span>
-                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium font-sans">
-                      <li>Tap the overflow <strong className="text-teal-600 dark:text-teal-400">three-dot settings menu</strong> (top-right of screen).</li>
-                      <li>Select <strong className="text-teal-650 dark:text-teal-400">"Install app"</strong> or <strong className="text-slate-650 dark:text-slate-300">"Add to Home Screen"</strong>.</li>
-                      <li>Confirm by tapping <strong className="font-bold">Install</strong> in the pop-up block.</li>
+                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] font-medium font-sans leading-relaxed">
+                      <li>Tap the Chrome URL address bar's <strong className="text-teal-600 dark:text-teal-400 font-bold">three-dot menu</strong>.</li>
+                      <li>Select <strong className="text-teal-650 dark:text-teal-450 font-bold">"Install app"</strong> or <strong className="text-slate-650 dark:text-slate-300 font-bold">"Add to Home Screen"</strong>.</li>
+                      <li>Tap <strong className="font-bold text-teal-600 dark:text-teal-400">Install</strong> to complete direct system launcher integration.</li>
                     </ol>
                   </div>
 
                   {/* Desktop Google Chrome */}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-805/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center gap-1.5">
-                      💻 Laptop & Desktop PCs (Edge, Chrome, Opera)
+                  <div className={`p-3 border rounded-xl space-y-1.5 transition-all duration-300 ${
+                    platformInfo.isDesktop 
+                      ? 'border-teal-500 bg-teal-500/[0.04] dark:bg-teal-500/[0.06] shadow-sm' 
+                      : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-850/40 text-slate-500 dark:text-slate-400'
+                  }`}>
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">💻 Laptop & Desktop PCs (Chrome & Opera)</span>
+                      {platformInfo.isDesktop && (
+                        <span className="text-[8px] bg-teal-600 font-extrabold text-white px-1.5 py-0.5 rounded uppercase tracking-wider">Your Device</span>
+                      )}
                     </span>
-                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                      <li>Check the browser's right-side **address URL bar** header for the <strong className="text-teal-600 dark:text-teal-400">App Install icon</strong> (represented as a monitor with down-pointed arrow).</li>
-                      <li>Or open the browser settings dropdown list on top right and click <strong className="text-teal-650 dark:text-teal-400">"Install Comfort Budgeting..."</strong></li>
+                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] font-medium leading-relaxed">
+                      <li>Look at the browser's right-hand address bar for the <strong className="text-teal-700 dark:text-teal-400 font-bold">"Install App" icon</strong> (monitor with down-arrow).</li>
+                      <li>Alternatively, click the top-right menu and choose <strong className="text-teal-600 dark:text-teal-400 font-bold">"Install Comfort Budgeting"</strong>.</li>
                     </ol>
                   </div>
                 </div>
