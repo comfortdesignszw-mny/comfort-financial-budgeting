@@ -93,6 +93,27 @@ export default function App() {
     setCompanyEmail(data.profile.companyEmail || '');
   }, [data]);
 
+  // Synchronize dynamic local data changes across concurrent windows/tabs as first source of truth
+  useEffect(() => {
+    const handleStorageUpdate = (event: StorageEvent) => {
+      if (event.key === 'comfortBudgetingData' && event.newValue) {
+        try {
+          const parsedData = JSON.parse(event.newValue);
+          setData(parsedData);
+          setNotification({
+            title: 'Data Synced Instantly',
+            message: 'Comfort system retrieved the latest data modifications directly from local storage.',
+            type: 'info'
+          });
+        } catch (err) {
+          console.error('[Comfort Admin] Failed to parse cross-window synchronized local storage data:', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    return () => window.removeEventListener('storage', handleStorageUpdate);
+  }, []);
+
   const handleUpdateData = (newData: AppData) => {
     setData(newData);
   };
