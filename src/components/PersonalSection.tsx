@@ -3,7 +3,7 @@ import {
   TrendingDown, TrendingUp, Scale, PiggyBank, Briefcase, Laptop, 
   LineChart, Gift, Coins, Utensils, Car, Film, ShoppingBag, 
   FileText, Heart, GraduationCap, Ellipsis, Trash2, Edit2, 
-  Plus, Calendar, Tag, Info, AlertTriangle, ChevronRight, X 
+  Plus, Calendar, Tag, Info, AlertTriangle, ChevronRight, X, Repeat 
 } from 'lucide-react';
 import { AppData, PersonalTransaction, PersonalBudget, PersonalExpenseCategory, CurrencyType } from '../types';
 import { formatCurrency, formatDate } from '../utils';
@@ -50,6 +50,9 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
   const [txCategory, setTxCategory] = useState('');
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [txNotes, setTxNotes] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFreq, setRecurrenceFreq] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [recurrenceCount, setRecurrenceCount] = useState<number>(6);
   
   const [budgetCategory, setBudgetCategory] = useState<PersonalExpenseCategory>('food');
   const [budgetLimit, setBudgetLimit] = useState('');
@@ -83,6 +86,9 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
     setTxCategory(type === 'income' ? 'salary' : 'food');
     setTxDate(new Date().toISOString().split('T')[0]);
     setTxNotes('');
+    setIsRecurring(false);
+    setRecurrenceFreq('monthly');
+    setRecurrenceCount(6);
     setIsTxModalOpen(true);
   };
 
@@ -94,20 +100,41 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
       return;
     }
 
-    const newTx: PersonalTransaction = {
-      id: `p-${Date.now()}`,
-      type: txModalType,
-      description: txDesc.trim(),
-      amount,
-      category: txCategory,
-      date: txDate,
-      notes: txNotes.trim() || undefined,
-      createdAt: new Date().toISOString()
-    };
+    const baseDate = new Date(txDate);
+    const generatedTxs: PersonalTransaction[] = [];
+    const count = isRecurring ? recurrenceCount : 1;
+
+    for (let i = 0; i < count; i++) {
+      const occurrenceDate = new Date(baseDate);
+      if (isRecurring) {
+        if (recurrenceFreq === 'weekly') {
+          occurrenceDate.setDate(baseDate.getDate() + (i * 7));
+        } else if (recurrenceFreq === 'monthly') {
+          occurrenceDate.setMonth(baseDate.getMonth() + i);
+        } else if (recurrenceFreq === 'yearly') {
+          occurrenceDate.setFullYear(baseDate.getFullYear() + i);
+        }
+      }
+
+      const occurrenceDateStr = occurrenceDate.toISOString().split('T')[0];
+      const txId = i === 0 ? `p-${Date.now()}` : `p-${Date.now()}-${i}`;
+      const descSuffix = (isRecurring && i > 0) ? ` (Recurring #${i + 1})` : '';
+
+      generatedTxs.push({
+        id: txId,
+        type: txModalType,
+        description: `${txDesc.trim()}${descSuffix}`,
+        amount,
+        category: txCategory,
+        date: occurrenceDateStr,
+        notes: txNotes.trim() ? `${txNotes.trim()}${isRecurring ? ` [Recurring: ${recurrenceFreq}]` : ''}` : (isRecurring ? `Recurring setup: ${recurrenceFreq}` : undefined),
+        createdAt: new Date().toISOString()
+      });
+    }
 
     onUpdateData({
       ...data,
-      transactions: [newTx, ...data.transactions]
+      transactions: [...generatedTxs, ...data.transactions]
     });
 
     setIsTxModalOpen(false);
@@ -511,6 +538,15 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
                             <span>{catDetails.label}</span>
                             <span>•</span>
                             <span>{formatDate(t.date)}</span>
+                            {t.notes && (t.notes.includes('Recurring') || t.notes.includes('[Recurring')) && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-0.5 text-teal-600 dark:text-teal-400 font-semibold uppercase text-[9px] tracking-wider leading-none">
+                                  <Repeat size={9} className="animate-pulse" />
+                                  <span>Recurring</span>
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -888,6 +924,52 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
                   className="w-full text-sm p-3 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-xl focus:outline-none focus:border-teal-500"
                   required
                 />
+              </div>
+
+              {/* Recurring Switch and Frequency controls */}
+              <div className="bg-slate-50 dark:bg-slate-950/40 p-4 border border-slate-100 dark:border-slate-900 rounded-xl space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300 pointer-events-auto"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <Repeat size={14} className="text-teal-600 dark:text-teal-400" />
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-sans">Set as Recurring Transaction</span>
+                  </div>
+                </label>
+
+                {isRecurring && (
+                  <div className="grid grid-cols-2 gap-3 pt-1 animate-in fade-in duration-200">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1 font-sans">Frequency</label>
+                      <select
+                        value={recurrenceFreq}
+                        onChange={(e) => setRecurrenceFreq(e.target.value as 'weekly' | 'monthly' | 'yearly')}
+                        className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-white rounded-lg focus:outline-none focus:border-teal-500"
+                      >
+                        <option value="weekly">Weekly Frequency</option>
+                        <option value="monthly">Monthly Frequency</option>
+                        <option value="yearly">Yearly Frequency</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1 font-sans">Repetitions Count</label>
+                      <select
+                        value={recurrenceCount}
+                        onChange={(e) => setRecurrenceCount(parseInt(e.target.value))}
+                        className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-white rounded-lg focus:outline-none focus:border-teal-500"
+                      >
+                        <option value="3">3 cycles</option>
+                        <option value="6">6 cycles</option>
+                        <option value="12">12 cycles</option>
+                        <option value="24">24 cycles</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
