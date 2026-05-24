@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Wallet, UserCog, Download, Upload, Trash2, Save, 
-  Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2
+  Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2, Heart, Scale, ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
@@ -59,6 +59,7 @@ export default function App() {
   const [companyPhone, setCompanyPhone] = useState(data.profile.companyPhone || '');
   const [companyEmail, setCompanyEmail] = useState(data.profile.companyEmail || '');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [activeLegalModal, setActiveLegalModal] = useState<'tos' | 'privacy' | null>(null);
 
   // Custom popup notification state (instead of standard alerts for a premium feel in iFrames)
   const [notification, setNotification] = useState<{
@@ -712,6 +713,75 @@ export default function App() {
             </div>
           )}
 
+          {/* Elegant System Footer section */}
+          <footer className="mt-16 pt-8 border-t border-slate-200 dark:border-slate-850 space-y-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={comfortLogo}
+                  alt="Comfort Budgeting Logo"
+                  className="w-8 h-8 object-cover rounded-lg border border-teal-500/20"
+                  referrerPolicy="no-referrer"
+                />
+                <div>
+                  <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs tracking-tight font-sans">
+                    Comfort Financial Budgeting
+                  </h4>
+                  <p className="text-[10px] text-slate-405 dark:text-slate-400">
+                    A Unified Corporate & Personal Finance Engine
+                  </p>
+                </div>
+              </div>
+              
+              {/* Active Section Indicator Badges */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`px-2 py-1 text-[9px] font-bold rounded-md ${dataSpace === 'personal' ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400 border border-teal-500/10' : 'bg-slate-50 text-slate-400 dark:bg-slate-900 border border-slate-800/10'}`}>
+                  ● Personal Suite
+                </span>
+                <span className={`px-2 py-1 text-[9px] font-bold rounded-md ${dataSpace === 'business' ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 border border-green-500/10' : 'bg-slate-50 text-slate-400 dark:bg-slate-900 border border-slate-800/10'}`}>
+                  ● Business Suite
+                </span>
+                <span className={`px-2 py-1 text-[9px] font-bold rounded-md ${dataSpace === 'profile' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200' : 'bg-slate-50 text-slate-400 dark:bg-slate-900 border border-slate-800/10'}`}>
+                  ● Device Profile
+                </span>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-900/60 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left text-slate-450 dark:text-slate-500 text-xs font-sans">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 font-medium">
+                <p>&copy; 2026 Comfort Financial Budgeting. All rights reserved.</p>
+                <div className="flex items-center gap-3">
+                  <span className="hidden sm:inline text-slate-300 dark:text-slate-800">•</span>
+                  <button 
+                    onClick={() => setActiveLegalModal('tos')}
+                    className="hover:text-teal-600 dark:hover:text-teal-400 font-bold transition cursor-pointer"
+                  >
+                    Terms of Service
+                  </button>
+                  <span className="text-slate-300 dark:text-slate-800">•</span>
+                  <button 
+                    onClick={() => setActiveLegalModal('privacy')}
+                    className="hover:text-teal-600 dark:hover:text-teal-400 font-bold transition cursor-pointer"
+                  >
+                    Privacy Policy
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-705 transition duration-200">
+                <span>Designed with</span>
+                <Heart size={12} className="text-rose-500 fill-rose-500 animate-pulse shrink-0" />
+                <span>by</span>
+                <a 
+                  href="tel:+263772824132"
+                  className="font-extrabold text-[#0D9488] hover:underline"
+                >
+                  Comfort Designs- +263772824132
+                </a>
+              </div>
+            </div>
+          </footer>
+
         </main>
       </div>
 
@@ -804,6 +874,194 @@ export default function App() {
                   }`}
                 >
                   Dismiss Message
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Animated Custom Modal for Terms of Service & Privacy Policy Documents */}
+      <AnimatePresence>
+        {activeLegalModal && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-[99999]">
+            {/* Backdrop panel */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveLegalModal(null)}
+              className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm"
+            />
+
+            {/* Content card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -15 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 max-w-lg w-full relative z-10 flex flex-col max-h-[85vh]"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-4 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-xl shrink-0 ${
+                    activeLegalModal === 'tos' 
+                      ? 'bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400' 
+                      : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                  }`}>
+                    {activeLegalModal === 'tos' ? (
+                      <Scale size={20} />
+                    ) : (
+                      <ShieldCheck size={20} />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 dark:text-white text-base leading-snug font-sans tracking-tight">
+                      {activeLegalModal === 'tos' ? 'Terms of Service Agreement' : 'Privacy Protection Policy'}
+                    </h3>
+                    <p className="text-[10px] text-teal-600 dark:text-teal-400 font-extrabold uppercase tracking-widest leading-none mt-0.5 font-sans">
+                      {activeLegalModal === 'tos' ? 'Legal Summary & Guidelines' : 'Commitment & Sandbox Safety'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveLegalModal(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Scrollable Doc content */}
+              <div className="overflow-y-auto py-4 space-y-4 pr-1 text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-sans scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                {activeLegalModal === 'tos' ? (
+                  <>
+                    <p className="font-bold text-slate-800 dark:text-slate-150">
+                      Welcome to Comfort Financial Budgeting. Please read this summary of our Terms of Service before using the platform.
+                    </p>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-teal-500 font-mono">1.</span> Safe Client-Side Architecture
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Comfort operates as a local-first utility. You possess absolute custody of raw transaction logs and budgets, saved securely and exclusively nested in your sandboxed web browser.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-teal-500 font-mono">2.</span> Planning Reference Only
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Visual indicators, growth arrows, cash flow or ledger modules, and budget tracking metrics are generated as helpful decision-support references. They do not constitute official wealth advisory disclosures, bank accounting books, or formal audits.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-teal-500 font-mono">3.</span> Permitted Usage Actions
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          You agree not to modify software assets maliciously, inject harmful javascript queries into client profiling panels, or engage in high-frequency scraping of system routes.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-teal-500 font-mono">4.</span> Rights of Modification
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Intellectual styling components and visual logo configurations are guarded under Comfort Designs properties. We hold the right to enhance or adapt these features to boost accuracy.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-950/40 p-3 border border-slate-100 dark:border-slate-850/60 rounded-xl">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-450 leading-normal">
+                        By navigating this application interface, you fully agree to observe comfort conditions for transaction recording, local database storage mechanisms, and styling provisions.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold text-slate-800 dark:text-slate-150">
+                      Your financial records and accounts deserve complete security. Read how we protect your information below.
+                    </p>
+
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-emerald-500 font-mono">1.</span> Absolute Data Privacy
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Comfort enforces a strict off-grid posture. Raw transactional notes, corporate cash entries, savings balances, or contact parameters are never sent to external servers or remote hosts.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-emerald-500 font-mono">2.</span> Sandbox Execution
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          All financial transactions resides fully in your sandbox storage container. When you perform a Clean Wipe database purge, you permanently destroy all historical files from your browser memory.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-emerald-500 font-mono">3.</span> Zero Third-Party Advertising
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          This platform is built with Zero tracker scripts. We do not maintain telemetry identifiers, cookie profiling hooks, or behavior marketing scripts designed to monetize your financial information.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-emerald-500 font-mono">4.</span> Technical Communications
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          If you contact Comfort Designs at the provided phone line (+263772824132), any feedback details you voluntarily share will be kept highly confidential.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-950/40 p-3 border border-slate-100 dark:border-slate-850/60 rounded-xl">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-450 leading-normal">
+                        Privacy is the fundamental cornerstone of Comfort Financial Budgeting. Rest easy knowing that you dictate exactly where your data is stored.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Modal Action Footer */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5 shrink-0">
+                <button
+                  onClick={() => {
+                    setNotification({
+                      title: 'Agreement Confirmed',
+                      message: `Acknowledged and confirmed the latest ${activeLegalModal === 'tos' ? 'Terms of Service' : 'Privacy Protection Policy'} document principles successfully.`,
+                      type: 'success'
+                    });
+                    setActiveLegalModal(null);
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold leading-none cursor-pointer duration-200 hover:opacity-90 shadow-sm transition ${
+                    activeLegalModal === 'tos'
+                      ? 'bg-teal-600 text-white shadow-teal-500/10'
+                      : 'bg-emerald-600 text-white shadow-emerald-500/10'
+                  }`}
+                >
+                  I Acknowledge & Agree
+                </button>
+                <button
+                  onClick={() => setActiveLegalModal(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 hover:bg-slate-250 dark:bg-slate-800 dark:hover:bg-slate-750 transition cursor-pointer"
+                >
+                  Cancel
                 </button>
               </div>
             </motion.div>
