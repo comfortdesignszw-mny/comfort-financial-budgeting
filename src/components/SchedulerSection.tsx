@@ -37,7 +37,9 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
   const [noteContent, setNoteContent] = useState('');
   const [noteFontFamily, setNoteFontFamily] = useState<string>('sans');
   const [noteFontSize, setNoteFontSize] = useState<string>('base');
-  const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit');
+  const [editorMode, setEditorMode] = useState<'edit' | 'preview'>(() => {
+    return (data.notes && data.notes.length > 0) ? 'preview' : 'edit';
+  });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -890,7 +892,10 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
                   return (
                     <div
                       key={note.id}
-                      onClick={() => setActiveNoteId(note.id)}
+                      onClick={() => {
+                        setActiveNoteId(note.id);
+                        setEditorMode('preview');
+                      }}
                       className={`p-3 rounded-xl border transition-all duration-200 text-left cursor-pointer group flex justify-between items-start gap-3 select-none ${
                         isActive
                           ? 'border-teal-500 bg-teal-50/40 dark:bg-teal-950/20 shadow-sm'
@@ -1510,6 +1515,7 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
                             <span 
                               onClick={() => {
                                 setActiveNoteId(linkedNote.id);
+                                setEditorMode('preview');
                                 setActiveTab('notes');
                               }}
                               className="font-bold text-teal-700 dark:text-teal-400 underline cursor-pointer truncate flex-1 block"
