@@ -1,8 +1,9 @@
-const CACHE_NAME = 'comfort-budgeting-v2';
+const CACHE_NAME = 'comfort-budgeting-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/src/assets/images/comfort_logo_brand_1779617398401.png'
+  '/comfort_logo_brand.png',
+  '/manifest.json'
 ];
 
 // Install Event: cache core shell items immediately

@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Wallet, UserCog, Download, Upload, Trash2, Save, 
-  Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2, Heart, Scale, ShieldCheck
+  Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2, Heart, Scale, ShieldCheck,
+  Sun, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
@@ -60,6 +61,29 @@ export default function App() {
   const [companyEmail, setCompanyEmail] = useState(data.profile.companyEmail || '');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [activeLegalModal, setActiveLegalModal] = useState<'tos' | 'privacy' | null>(null);
+  
+  // Theme Switching state and side-effect
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const stored = localStorage.getItem('comfortBudgetingTheme');
+      if (stored === 'dark' || stored === 'light') {
+        return stored;
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('comfortBudgetingTheme', theme);
+  }, [theme]);
 
   // Custom popup notification state (instead of standard alerts for a premium feel in iFrames)
   const [notification, setNotification] = useState<{
@@ -294,7 +318,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans antialiased text-[16px]">
       
       {/* Mobile Header Bar */}
-      <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
+      <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 font-sans">
         <button 
           onClick={() => setIsMobileSidebarOpen(true)}
           className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -308,10 +332,21 @@ export default function App() {
             className="w-7 h-7 object-cover rounded-lg border border-teal-500/25 shadow-sm"
             referrerPolicy="no-referrer"
           />
-          <span className="font-extrabold text-[#0D9488] font-sans text-sm">Comfort Budgeting</span>
+          <span className="font-extrabold text-[#0D9488] text-sm">Comfort Budgeting</span>
         </div>
-        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-teal-600">
-          {userInitials}
+        <div className="flex items-center gap-2.5">
+          {/* Mobile Theme Toggle Button */}
+          <button
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition duration-200 cursor-pointer flex items-center justify-center"
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} className="text-amber-500" />}
+          </button>
+          
+          <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-teal-600">
+            {userInitials}
+          </div>
         </div>
       </header>
 
@@ -404,6 +439,37 @@ export default function App() {
               <UserCog size={18} className={dataSpace === 'profile' ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'} />
               <span className="text-xs font-bold font-sans">Profile & Settings</span>
             </button>
+          </div>
+
+          {/* Aesthetic Theme Switcher Panel */}
+          <div className="p-3 mb-4 bg-slate-50/70 dark:bg-slate-800/20 border border-slate-150 dark:border-slate-800/30 rounded-xl space-y-2 mt-4 shrink-0">
+            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-widest pl-1 font-sans">
+              System Canvas Theme
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-900 rounded-lg">
+              <button
+                onClick={() => setTheme('light')}
+                className={`py-1.5 px-3 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition duration-200 cursor-pointer ${
+                  theme === 'light'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-450'
+                }`}
+              >
+                <Sun size={13} className={theme === 'light' ? 'text-amber-500 animate-spin-slow' : 'text-slate-400'} />
+                <span className="font-sans">Light</span>
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`py-1.5 px-3 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition duration-200 cursor-pointer ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 text-slate-100 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-705 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                <Moon size={13} className={theme === 'dark' ? 'text-indigo-400' : 'text-slate-450'} />
+                <span className="font-sans">Dark</span>
+              </button>
+            </div>
           </div>
 
           {/* Footer User Avatar summary card */}
