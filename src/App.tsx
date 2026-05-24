@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Wallet, UserCog, Download, Upload, Trash2, Save, 
   Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2, Heart, Scale, ShieldCheck,
-  Sun, Moon, Sparkles, Smartphone, Laptop, Check
+  Sun, Moon, Sparkles, Smartphone, Laptop, Check, Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
@@ -15,6 +15,7 @@ import { initialSampleData } from './sampleData';
 import { formatCurrency, currencySymbols } from './utils';
 import PersonalSection from './components/PersonalSection';
 import BusinessSection from './components/BusinessSection';
+import SchedulerSection from './components/SchedulerSection';
 import comfortLogo from './assets/images/comfort_logo_brand_1779617398401.png';
 
 export default function App() {
@@ -45,8 +46,20 @@ export default function App() {
   });
 
   // Active workspace section
-  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'profile'>('personal');
+  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'profile' | 'scheduler'>('personal');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Redirect to Scheduler space immediately if a shared schedule deep-link is opened
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('share_event')) {
+        setDataSpace('scheduler');
+      }
+    } catch (e) {
+      console.warn('URL parsing error', e);
+    }
+  }, []);
   
   // Profile Form fields
   const [profileName, setProfileName] = useState(data.profile.name);
@@ -423,6 +436,8 @@ export default function App() {
     ? 'Personal Section (Comfort Budgeting)' 
     : dataSpace === 'business' 
     ? 'Business Section (CashFlow Simple)' 
+    : dataSpace === 'scheduler'
+    ? 'Sandbox Calendar & Notes'
     : 'Universal Settings';
 
   const userInitials = data.profile.name
@@ -554,6 +569,21 @@ export default function App() {
               </div>
             </button>
 
+            <button
+              onClick={() => { setDataSpace('scheduler'); setIsMobileSidebarOpen(false); }}
+              className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
+                dataSpace === 'scheduler'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 ring-1 ring-blue-500/20 shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <Calendar size={18} className={dataSpace === 'scheduler' ? 'text-blue-500' : 'text-slate-400'} />
+              <div className="text-xs">
+                <span className="block font-bold">Notes & Scheduler</span>
+                <span className="text-[9px] text-slate-400">Sandbox Calendar Suite</span>
+              </div>
+            </button>
+
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-2 pt-4 mb-2">Configuration</div>
 
             <button
@@ -678,6 +708,14 @@ export default function App() {
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}
               theme={theme}
+            />
+          )}
+
+          {dataSpace === 'scheduler' && (
+            <SchedulerSection 
+              data={data}
+              onUpdateData={handleUpdateData}
+              currency={data.profile.currency}
             />
           )}
 

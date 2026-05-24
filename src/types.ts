@@ -82,6 +82,30 @@ export interface OweItem {
   notes?: string;
 }
 
+export interface FinancialNote {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  color?: string;
+  fontFamily?: string;
+  fontSize?: string;
+}
+
+export type EventCategoryType = 'Meeting' | 'Consultation' | 'Study Seminar' | 'General Reminder';
+
+export interface ScheduleEvent {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  category: EventCategoryType;
+  description: string;
+  linkedNoteId?: string;
+  createdAt: string;
+}
+
 // Outer application state containing both Personal and Business configurations
 export interface AppData {
   profile: ProfileState;
@@ -92,4 +116,7 @@ export interface AppData {
   businessInvestments: BusinessInvestment[];
   businessTransactions: BusinessTransaction[];
   businessOweItems: OweItem[];
+  // Notetaker & Scheduler database
+  notes?: FinancialNote[];
+  events?: ScheduleEvent[];
 }
