@@ -677,6 +677,7 @@ export default function App() {
               data={data}
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}
+              theme={theme}
             />
           )}
 

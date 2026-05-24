@@ -6,6 +6,15 @@ import {
   FileSpreadsheet, FileText
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import { 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip 
+} from 'recharts';
 import { AppData, BusinessTransaction, BusinessInvestment, OweItem, BusinessExpenseCategory, CurrencyType } from '../types';
 import { formatCurrency, formatDate, calculateBusinessCashOnHand, calculateBusinessOwnedAssets, calculateBusinessRunway, generateMonthlyInsight, currencySymbols } from '../utils';
 
@@ -13,6 +22,7 @@ interface BusinessSectionProps {
   data: AppData;
   onUpdateData: (newData: AppData) => void;
   currency: CurrencyType;
+  theme: 'light' | 'dark';
 }
 
 export const businessExpenseCategories: Record<BusinessExpenseCategory, { icon: React.ReactNode; label: string; desc: string; color: string; bg: string }> = {
@@ -46,7 +56,7 @@ export const businessExpenseCategories: Record<BusinessExpenseCategory, { icon: 
   }
 };
 
-export default function BusinessSection({ data, onUpdateData, currency }: BusinessSectionProps) {
+export default function BusinessSection({ data, onUpdateData, currency, theme }: BusinessSectionProps) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'investment' | 'reportCard'>('dashboard');
   
   // Modal configurations
@@ -290,6 +300,47 @@ export default function BusinessSection({ data, onUpdateData, currency }: Busine
 
   const reportMetrics = getMonthlyReportMetrics();
   const monthInsightSentence = generateMonthlyInsight(data.businessTransactions, reportMonth);
+
+  const getLast6MonthsData = () => {
+    const [yearStr, monthStr] = (reportMonth || '2026-05').split('-');
+    const endYear = parseInt(yearStr, 10);
+    const endMonth = parseInt(monthStr, 10) - 1; // 0-indexed
+    
+    interface MonthDataPoint {
+      name: string;
+      sales: number;
+      expenses: number;
+      profit: number;
+      key: string;
+    }
+    const monthsList: MonthDataPoint[] = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(endYear, endMonth - i, 1);
+      const mYear = d.getFullYear();
+      const mMonth = d.getMonth(); // 0-indexed
+      const label = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear().toString().slice(-2);
+      const key = `${mYear}-${String(mMonth + 1).padStart(2, '0')}`;
+      
+      const txForMonth = data.businessTransactions.filter(t => {
+        const txDate = new Date(t.date);
+        return txDate.getFullYear() === mYear && txDate.getMonth() === mMonth;
+      });
+      
+      const sales = txForMonth.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+      const expenses = txForMonth.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      const profit = sales - expenses;
+      
+      monthsList.push({
+        name: label,
+        sales,
+        expenses,
+        profit,
+        key
+      });
+    }
+    return monthsList;
+  };
 
   const handleExportCSV = () => {
     const [year, month] = reportMonth.split('-').map(Number);
@@ -967,6 +1018,69 @@ export default function BusinessSection({ data, onUpdateData, currency }: Busine
                 </div>
                 <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-700">
                   Checkboxes for tracking invoice bill dues on your kitchen mixers or organic flour bags outstanding.
+                </div>
+              </div>
+
+              {/* 6-Month Profit Trend Line Chart */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h5 className="text-xs font-bold text-teal-650 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
+                      📈 Trailing 6-Month Profit Trend
+                    </h5>
+                    <p className="text-[10px] text-slate-400">Net take-home profit leading to {reportMonth}</p>
+                  </div>
+                  <div className="text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded">
+                    {getLast6MonthsData().filter(item => item.profit >= 0).length}/6 Profitable
+                  </div>
+                </div>
+
+                <div className="h-[200px] w-full text-xs">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={getLast6MonthsData()}
+                      margin={{ top: 12, right: 12, left: -22, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} vertical={false} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke={theme === 'dark' ? '#94a3b8' : '#64748b'} 
+                        tickLine={false}
+                        axisLine={false}
+                        dy={8}
+                        style={{ fontSize: 9, fontFamily: 'monospace' }}
+                      />
+                      <YAxis 
+                        stroke={theme === 'dark' ? '#94a3b8' : '#64748b'} 
+                        tickLine={false}
+                        axisLine={false}
+                        dx={-4}
+                        style={{ fontSize: 9, fontFamily: 'monospace' }}
+                        tickFormatter={(value) => `${currencySymbols[currency] || '$'}${value.toLocaleString()}`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                          borderRadius: '0.75rem',
+                          fontSize: '11px',
+                          color: theme === 'dark' ? '#cbd5e1' : '#334155',
+                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+                        }}
+                        labelStyle={{ fontWeight: 'bold', color: theme === 'dark' ? '#cbd5e1' : '#1e293b', marginBottom: '4px' }}
+                        formatter={(value: any) => [`${currencySymbols[currency] || '$'}${value.toLocaleString()}`, 'Net Profit']}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="profit"
+                        stroke="#0d9488"
+                        strokeWidth={2.5}
+                        dot={{ r: 3, strokeWidth: 1.5, fill: theme === 'dark' ? '#0f172a' : '#ffffff' }}
+                        activeDot={{ r: 5, strokeWidth: 2 }}
+                        name="Profit"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
