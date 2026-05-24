@@ -14,7 +14,7 @@ import { initialSampleData } from './sampleData';
 import { formatCurrency, currencySymbols } from './utils';
 import PersonalSection from './components/PersonalSection';
 import BusinessSection from './components/BusinessSection';
-import comfortLogo from './assets/images/comfort_logo_1779616766032.png';
+import comfortLogo from './assets/images/comfort_logo_brand_1779617398401.png';
 
 export default function App() {
   const [data, setData] = useState<AppData>(() => {
