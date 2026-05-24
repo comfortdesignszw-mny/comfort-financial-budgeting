@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { 
   ArrowDownCircle, ArrowUpCircle, Shield, HelpCircle, Flame, 
   Layers, Package, Building, Users, Trash2, Calendar, 
-  Plus, DollarSign, PenTool, CheckSquare, Square, FileCheck, ArrowRight, Eye, Info, X 
+  Plus, DollarSign, PenTool, CheckSquare, Square, FileCheck, ArrowRight, Eye, Info, X,
+  FileSpreadsheet, FileText
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { AppData, BusinessTransaction, BusinessInvestment, OweItem, BusinessExpenseCategory, CurrencyType } from '../types';
-import { formatCurrency, formatDate, calculateBusinessCashOnHand, calculateBusinessOwnedAssets, calculateBusinessRunway, generateMonthlyInsight } from '../utils';
+import { formatCurrency, formatDate, calculateBusinessCashOnHand, calculateBusinessOwnedAssets, calculateBusinessRunway, generateMonthlyInsight, currencySymbols } from '../utils';
 
 interface BusinessSectionProps {
   data: AppData;
@@ -288,6 +290,211 @@ export default function BusinessSection({ data, onUpdateData, currency }: Busine
 
   const reportMetrics = getMonthlyReportMetrics();
   const monthInsightSentence = generateMonthlyInsight(data.businessTransactions, reportMonth);
+
+  const handleExportCSV = () => {
+    const [year, month] = reportMonth.split('-').map(Number);
+    const listTx = data.businessTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === year && (d.getMonth() + 1) === month;
+    });
+
+    const symbol = currencySymbols[currency] || '$';
+    const headers = ['Date', 'Description', 'Category', 'Type', `Amount (${symbol})`].join(',');
+    
+    const rows = listTx.map(t => {
+      const sanitizedDescription = `"${(t.description || '').replace(/"/g, '""')}"`;
+      const categoryLabel = t.type === 'sale' ? 'Sale Income' : (businessExpenseCategories[t.category as BusinessExpenseCategory]?.label || t.category || '');
+      const typeLabel = t.type === 'sale' ? 'Income' : 'Expense';
+      return [
+        t.date,
+        sanitizedDescription,
+        `"${categoryLabel.replace(/"/g, '""')}"`,
+        typeLabel,
+        t.amount
+      ].join(',');
+    });
+
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Comfort_Business_Report_${reportMonth}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    const [year, month] = reportMonth.split('-').map(Number);
+    const listTx = data.businessTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === year && (d.getMonth() + 1) === month;
+    });
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const symbol = currencySymbols[currency] || '$';
+
+    // Teal branding header
+    doc.setFillColor(13, 148, 136);
+    doc.rect(0, 0, 210, 40, 'F');
+
+    // Title & Brand info
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('COMFORT FINANCIAL BUDGETING', 14, 16);
+    
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Unified Corporate & Personal Finance Engine', 14, 22);
+    doc.text(`Report Period: ${reportMonth}`, 14, 28);
+
+    // Organization info at top right
+    if (data.profile.companyName) {
+      doc.setFont('Helvetica', 'bold');
+      doc.text(data.profile.companyName.toUpperCase(), 196, 16, { align: 'right' });
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9);
+      if (data.profile.companyEmail) doc.text(data.profile.companyEmail, 196, 21, { align: 'right' });
+      if (data.profile.companyPhone) doc.text(data.profile.companyPhone, 196, 25, { align: 'right' });
+    }
+
+    // Summary Section
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(13);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('MONTHLY SNAPSHOT SUMMARY', 14, 52);
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(14, 55, 196, 55);
+
+    doc.setFontSize(10);
+    doc.setFont('Helvetica', 'normal');
+    doc.text('Net Take-Home Surplus/Deficit:', 14, 63);
+    doc.text('Gross Business Sales:', 14, 69);
+    doc.text('Spent Outflow Drain:', 14, 75);
+    doc.text('Possessional Assets Sum:', 14, 81);
+
+    doc.setFont('Helvetica', 'bold');
+    const takeHomeStr = `${reportMetrics.takeHomeProfit >= 0 ? '+' : '-'}${symbol} ${Math.abs(reportMetrics.takeHomeProfit).toLocaleString()}`;
+    const salesStr = `+${symbol} ${reportMetrics.sales.toLocaleString()}`;
+    const expensesStr = `-${symbol} ${reportMetrics.expenses.toLocaleString()}`;
+    const assetsStr = `${symbol} ${reportMetrics.assetSum.toLocaleString()}`;
+
+    // Color code the net profit
+    if (reportMetrics.takeHomeProfit >= 0) {
+      doc.setTextColor(16, 124, 65);
+    } else {
+      doc.setTextColor(220, 38, 38);
+    }
+    doc.text(takeHomeStr, 80, 63);
+
+    doc.setTextColor(30, 41, 59);
+    doc.text(salesStr, 80, 69);
+    doc.text(expensesStr, 80, 75);
+    doc.text(assetsStr, 80, 81);
+
+    // Monthly Insight Section
+    doc.setFontSize(11);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('MONTHLY SYSTEM INSIGHTS', 14, 93);
+    doc.line(14, 95, 196, 95);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(71, 85, 105);
+    
+    const splitInsight = doc.splitTextToSize(monthInsightSentence || "No transaction logs recorded for this period to compile insights.", 182);
+    doc.text(splitInsight, 14, 101);
+
+    // List of Transactions Header
+    const tableStartY = 115 + (splitInsight.length * 4.5);
+    doc.setTextColor(30, 41, 59);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('TRANSACTION HISTORY LOG', 14, tableStartY);
+    doc.line(14, tableStartY + 2, 196, tableStartY + 2);
+
+    // Table Headers
+    const headersY = tableStartY + 8;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, headersY - 4.5, 182, 6.5, 'F');
+    doc.setFontSize(9);
+    doc.setFont('Helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    
+    doc.text('Date', 16, headersY);
+    doc.text('Description', 42, headersY);
+    doc.text('Category', 110, headersY);
+    doc.text('Type', 152, headersY);
+    doc.text('Amount', 194, headersY, { align: 'right' });
+
+    let currentY = headersY + 6.5;
+    
+    doc.setFont('Helvetica', 'normal');
+    doc.setTextColor(30, 41, 59);
+
+    if (listTx.length === 0) {
+      doc.text('No transaction events recorded during this calendar period.', 16, currentY);
+    } else {
+      listTx.forEach((tx, idx) => {
+        if (currentY > 275) {
+          doc.addPage();
+          currentY = 20;
+          
+          doc.setFillColor(241, 245, 249);
+          doc.rect(14, currentY - 4.5, 182, 6.5, 'F');
+          doc.setFont('Helvetica', 'bold');
+          doc.setTextColor(71, 85, 105);
+          doc.text('Date', 16, currentY);
+          doc.text('Description', 42, currentY);
+          doc.text('Category', 110, currentY);
+          doc.text('Type', 152, currentY);
+          doc.text('Amount', 194, currentY, { align: 'right' });
+          currentY += 6.5;
+          doc.setFont('Helvetica', 'normal');
+          doc.setTextColor(30, 41, 59);
+        }
+
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(14, currentY - 3.5, 182, 5.5, 'F');
+        }
+
+        const dateStr = tx.date;
+        const rawDesc = tx.description || 'N/A';
+        const truncatedDesc = rawDesc.length > 34 ? rawDesc.substring(0, 31) + '...' : rawDesc;
+        const catText = tx.type === 'sale' ? 'Sale Income' : (businessExpenseCategories[tx.category as BusinessExpenseCategory]?.label || tx.category || '');
+        const cleanedCatText = catText.replace(/[^\x00-\x7F]/g, ""); // clear emoji icons for PDF compatibility
+        const typeText = tx.type === 'sale' ? 'INCOME' : 'EXPENSE';
+        const amtStr = `${tx.type === 'sale' ? '+' : '-'}${symbol} ${tx.amount.toLocaleString()}`;
+
+        doc.text(dateStr, 16, currentY);
+        doc.text(truncatedDesc, 42, currentY);
+        doc.text(cleanedCatText.trim(), 110, currentY);
+        
+        if (tx.type === 'sale') {
+          doc.setTextColor(16, 124, 65);
+        } else {
+          doc.setTextColor(185, 28, 28);
+        }
+        doc.text(typeText, 152, currentY);
+        doc.text(amtStr, 194, currentY, { align: 'right' });
+        
+        doc.setTextColor(30, 41, 59);
+        currentY += 5.5;
+      });
+    }
+
+    doc.save(`Comfort_Business_Report_${reportMonth}.pdf`);
+  };
 
   return (
     <div className="space-y-6">
@@ -685,9 +892,29 @@ export default function BusinessSection({ data, onUpdateData, currency }: Busine
                 </div>
               )}
 
-              <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base pb-3 border-b border-slate-100 dark:border-slate-800">
-                📊 Month Report Details: {reportMonth}
-              </h4>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-normal font-sans">
+                  📊 Month Report Details: {reportMonth}
+                </h4>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/45 dark:text-teal-400 dark:hover:bg-teal-950 text-teal-700 border border-teal-500/10 rounded-xl text-xs font-bold transition duration-200 cursor-pointer"
+                    title="Export transaction records as a spreadsheet CSV file"
+                  >
+                    <FileSpreadsheet size={13.5} />
+                    <span>CSV Log</span>
+                  </button>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                    title="Download clean compiled PDF document Statement"
+                  >
+                    <FileText size={13.5} />
+                    <span>PDF Statement</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Row 1: Your Take-Home Profit/Loss */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-2">

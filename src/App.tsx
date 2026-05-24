@@ -85,6 +85,51 @@ export default function App() {
     localStorage.setItem('comfortBudgetingTheme', theme);
   }, [theme]);
 
+  // PWA beforeinstallprompt hooks and handlers for desktop and mobile
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isAppInstallable, setIsAppInstallable] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent automatic prompt show
+      e.preventDefault();
+      // Store event
+      setDeferredPrompt(e);
+      setIsAppInstallable(true);
+      
+      setNotification({
+        title: 'WebApp Install Ready 📱',
+        message: 'Comfort Budgeting can now be installed directly on your phone or desktop computer as a Native App, supporting offline capabilities!',
+        type: 'info'
+      });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // If running in standalone mode, don't show custom install buttons
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstallable(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`[Comfort App] User prompt response outcome: ${outcome}`);
+      setDeferredPrompt(null);
+      setIsAppInstallable(false);
+    } else {
+      // Prompt modal fallback guide for Safari iOS, macOS & unsupported environments
+      setShowInstallGuide(true);
+    }
+  };
+
   // Custom popup notification state (instead of standard alerts for a premium feel in iFrames)
   const [notification, setNotification] = useState<{
     title: string;
@@ -448,6 +493,23 @@ export default function App() {
             >
               <UserCog size={18} className={dataSpace === 'profile' ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'} />
               <span className="text-xs font-bold font-sans">Profile & Settings</span>
+            </button>
+          </div>
+
+          {/* Native PWA Installation CTA */}
+          <div className="p-3 mb-3 bg-teal-500/5 dark:bg-teal-500/10 border border-teal-500/20 rounded-xl space-y-1">
+            <div className="text-[9px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
+              Native Mobile Companion
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+              Access account offline anytime with premium native app setup!
+            </p>
+            <button
+              onClick={handleInstallApp}
+              className="w-full mt-1.5 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold transition duration-200 cursor-pointer bg-teal-600 hover:bg-teal-700 text-white shadow-sm hover:shadow"
+            >
+              <Download size={13} className="shrink-0" />
+              <span>Install Mobile App</span>
             </button>
           </div>
 
@@ -940,6 +1002,106 @@ export default function App() {
                   }`}
                 >
                   Dismiss Message
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Dynamic PWA Mobile Install Guide Fallback Modal */}
+      <AnimatePresence>
+        {showInstallGuide && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-[99999]">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInstallGuide(false)}
+              className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm"
+            />
+
+            {/* Content card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -15 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 max-w-md w-full relative z-10 flex flex-col max-h-[85vh] font-sans"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-4 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl shrink-0 bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400">
+                    <Download size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-105">
+                      Install Comfort Companion App
+                    </h3>
+                    <p className="text-[10px] text-slate-400">Run native on Android, iOS, and Desktop devices</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowInstallGuide(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Instructions List */}
+              <div className="py-4 space-y-4 overflow-y-auto text-xs text-slate-650 dark:text-slate-350">
+                <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed text-[11px]">
+                  Comfort Budgeting is packaged with complete Progressive Web App (PWA) compliance. Install it in seconds to enjoy rich full-screen visuals, offline access capability, and zero memory overhead.
+                </p>
+
+                <div className="space-y-3.5 pt-1">
+                  {/* iOS Safari */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-805/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center gap-1.5">
+                      🍏 Apple iOS (Safari Browser)
+                    </span>
+                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      <li>Tap the browser screen <strong className="text-teal-600 dark:text-teal-400">Share</strong> icon (rectangle with an up-pointing arrow).</li>
+                      <li>Scroll down the options list and find/tap <strong className="text-teal-650 dark:text-teal-400">"Add to Home Screen"</strong>.</li>
+                      <li>Click <strong className="font-bold">Add</strong> at top right to finalize placement.</li>
+                    </ol>
+                  </div>
+
+                  {/* Android Chrome */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-805/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center gap-1.5">
+                      🤖 Android & Chrome Mobile
+                    </span>
+                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium font-sans">
+                      <li>Tap the overflow <strong className="text-teal-600 dark:text-teal-400">three-dot settings menu</strong> (top-right of screen).</li>
+                      <li>Select <strong className="text-teal-650 dark:text-teal-400">"Install app"</strong> or <strong className="text-slate-650 dark:text-slate-300">"Add to Home Screen"</strong>.</li>
+                      <li>Confirm by tapping <strong className="font-bold">Install</strong> in the pop-up block.</li>
+                    </ol>
+                  </div>
+
+                  {/* Desktop Google Chrome */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-805/40 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block text-xs flex items-center gap-1.5">
+                      💻 Laptop & Desktop PCs (Edge, Chrome, Opera)
+                    </span>
+                    <ol className="list-decimal pl-4.5 space-y-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      <li>Check the browser's right-side **address URL bar** header for the <strong className="text-teal-600 dark:text-teal-400">App Install icon</strong> (represented as a monitor with down-pointed arrow).</li>
+                      <li>Or open the browser settings dropdown list on top right and click <strong className="text-teal-650 dark:text-teal-400">"Install Comfort Budgeting..."</strong></li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close and settings confirmations */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end shrink-0">
+                <button
+                  onClick={() => setShowInstallGuide(false)}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition duration-200 cursor-pointer shadow-sm"
+                >
+                  Understood & Close
                 </button>
               </div>
             </motion.div>
