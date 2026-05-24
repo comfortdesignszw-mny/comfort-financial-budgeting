@@ -446,7 +446,7 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
                           fill="transparent"
                           stroke={seg.color}
                           strokeWidth={strokeWidth}
-                          strokeDasharray={circumference}
+                          strokeDasharray={`${seg.strokeDash} ${circumference}`}
                           strokeDashoffset={seg.strokeOffset}
                           className="transition-all duration-500 hover:stroke-[14px]"
                         />

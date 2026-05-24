@@ -6,8 +6,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Wallet, UserCog, Download, Upload, Trash2, Save, 
-  Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info
+  Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
 import { initialSampleData } from './sampleData';
 import { formatCurrency, currencySymbols } from './utils';
@@ -19,7 +20,21 @@ export default function App() {
     try {
       const stored = localStorage.getItem('comfortBudgetingData');
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Discard legacy sample data to guarantee a pristine, empty workspace for personalization
+        if (
+          parsed &&
+          parsed.profile &&
+          (parsed.profile.name === 'Jane Doe' ||
+           parsed.profile.email === 'jane.doe@example.com' ||
+           parsed.transactions?.some((t: any) => t.description === 'Weekly Groceries' || t.description === 'Grocery Run') ||
+           parsed.businessTransactions?.some((t: any) => t.customerName === 'Acme Corp' || t.description?.includes('Acme'))
+          )
+        ) {
+          localStorage.setItem('comfortBudgetingData', JSON.stringify(initialSampleData));
+          return initialSampleData;
+        }
+        return parsed;
       }
     } catch (e) {
       console.error('Error loading localStorage, falling back to sample data', e);
@@ -43,6 +58,24 @@ export default function App() {
   const [companyPhone, setCompanyPhone] = useState(data.profile.companyPhone || '');
   const [companyEmail, setCompanyEmail] = useState(data.profile.companyEmail || '');
 
+  // Custom popup notification state (instead of standard alerts for a premium feel in iFrames)
+  const [notification, setNotification] = useState<{
+    title: string;
+    message: string;
+    type: 'success' | 'info' | 'error';
+    details?: { label: string; value: string }[];
+  } | null>(null);
+
+  // Auto-dismiss popup notification after 4.5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   // Sync back to localstorage whenever data state gets modified
   useEffect(() => {
     localStorage.setItem('comfortBudgetingData', JSON.stringify(data));
@@ -65,7 +98,11 @@ export default function App() {
     e.preventDefault();
     const target = parseFloat(profileSavingsTarget);
     if (isNaN(target) || target < 0) {
-      alert('Please enter a valid savings target.');
+      setNotification({
+        title: 'Validation Error',
+        message: 'Please enter a valid numeric value for the monthly target savings limit.',
+        type: 'error'
+      });
       return;
     }
 
@@ -81,7 +118,18 @@ export default function App() {
       }
     };
     setData(updated);
-    alert('Global Profile information updated successfully!');
+    setNotification({
+      title: 'Personal Settings Updated',
+      message: 'Your system identifier details and primary savings threshold targets have been successfully committed to local sandbox memory.',
+      type: 'success',
+      details: [
+        { label: 'Full User Name', value: profileName.trim() || 'User' },
+        { label: 'Email Address', value: profileEmail.trim() || 'Not Configured' },
+        { label: 'Active Currency', value: profileCurrency },
+        { label: 'Monthly Ceiling Target', value: `${currencySymbols[profileCurrency]} ${target.toLocaleString()}` },
+        { label: 'Ceiling Label', value: profileSavingsGoal.trim() || 'Savings Goal' }
+      ]
+    });
   };
 
   const handleSaveCompanyProfile = (e: React.FormEvent) => {
@@ -96,7 +144,16 @@ export default function App() {
       }
     };
     setData(updated);
-    alert('Company Profile information updated and saved successfully!');
+    setNotification({
+      title: 'Company Profile Updated',
+      message: 'Your corporate business credentials and contact details have been successfully saved offline to this device.',
+      type: 'success',
+      details: [
+        { label: 'Company Name', value: companyName.trim() || 'Not Provided (Standard Entity)' },
+        { label: 'Phone Number', value: companyPhone.trim() || 'Not Provided (No Contact Number)' },
+        { label: 'Email Address', value: companyEmail.trim() || 'Not Provided (No Billing Email)' }
+      ]
+    });
   };
 
   // 1. Export Data Backup
@@ -112,8 +169,17 @@ export default function App() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      setNotification({
+        title: 'Backup Created Successfully',
+        message: 'Your local database archive file (.json) was generated and downloaded. Store it safely to restore your records anytime!',
+        type: 'success'
+      });
     } catch (e) {
-      alert('Error creating backup archive.');
+      setNotification({
+        title: 'Backup Failed',
+        message: 'There was an error while trying to package and export your active workspace database.',
+        type: 'error'
+      });
     }
   };
 
@@ -128,12 +194,29 @@ export default function App() {
         const imported = JSON.parse(event.target?.result as string);
         if (imported && imported.profile && imported.transactions) {
           setData(imported);
-          alert('Data backup successfully restored!');
+          setNotification({
+            title: 'Database Restored Successfully',
+            message: 'All personal transactions, budgets, cashflows, and corporate profiles have been successfully loaded and updated.',
+            type: 'success',
+            details: [
+              { label: 'Imported User', value: imported.profile.name || 'User' },
+              { label: 'Imported Company', value: imported.profile.companyName || 'None' },
+              { label: 'Source Backup Currency', value: imported.profile.currency || 'USD' }
+            ]
+          });
         } else {
-          alert('Invalid backup structure. Check JSON profile properties.');
+          setNotification({
+            title: 'Invalid Backup File',
+            message: 'The structure of the JSON file uploaded is invalid or incompatible with the Comfort Budgeting schema.',
+            type: 'error'
+          });
         }
       } catch (err) {
-        alert('Invalid JSON file. Unable to restore backup.');
+        setNotification({
+          title: 'Import Error',
+          message: 'Could not parse the selected file. Please make sure you are selecting a valid backup file (.json).',
+          type: 'error'
+        });
       }
     };
     reader.readAsText(file);
@@ -145,11 +228,11 @@ export default function App() {
     if (confirm('WARNING: This will permanently delete ALL transactions, budgets, cash-flows, debts, and configuration settings. This action is irreversible. Proceed?')) {
       const freshData: AppData = {
         profile: {
-          name: 'Jane Doe',
-          email: 'jane.doe@example.com',
+          name: 'Comfort User',
+          email: '',
           currency: 'USD',
           savingsTarget: 1000,
-          savingsGoal: 'Emergency Reservoir',
+          savingsGoal: 'Savings Goal',
           createdAt: new Date().toISOString(),
           companyName: '',
           companyPhone: '',
@@ -163,7 +246,11 @@ export default function App() {
       };
       setData(freshData);
       setDataSpace('personal');
-      alert('Failsafe complete database reset triggered successfully.');
+      setNotification({
+        title: 'Database Purged',
+        message: 'Safety wipe was fully executed. Your browser database and corporate profile settings are now reset back to factory defaults.',
+        type: 'info'
+      });
     }
   };
 
@@ -557,6 +644,103 @@ export default function App() {
 
         </main>
       </div>
+
+      {/* Floating Animated Custom Pop Notification Component */}
+      <AnimatePresence>
+        {notification && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-[9999] pointer-events-none">
+            {/* Backdrop panel */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setNotification(null)}
+              className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs pointer-events-auto"
+            />
+
+            {/* Content card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -15 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-5 max-w-md w-full pointer-events-auto ring-1 ring-slate-900/5 flex flex-col gap-3 relative z-10"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full shrink-0 ${
+                    notification.type === 'error' 
+                      ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400' 
+                      : notification.type === 'info'
+                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+                      : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+                  }`}>
+                    {notification.type === 'error' ? (
+                      <ShieldAlert size={20} />
+                    ) : notification.type === 'info' ? (
+                      <Info size={20} />
+                    ) : (
+                      <CheckCircle2 size={20} className="stroke-[2.5]" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 dark:text-white text-sm leading-snug">
+                      {notification.title}
+                    </h3>
+                    <p className="text-[10px] text-teal-600 dark:text-teal-400 font-extrabold uppercase tracking-wider">
+                      Database Committed
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setNotification(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500 dark:text-slate-350 leading-relaxed">
+                {notification.message}
+              </p>
+
+              {notification.details && notification.details.length > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-850 rounded-xl p-3 space-y-2 mt-1">
+                  <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">
+                    Saved Parameters:
+                  </span>
+                  <div className="grid gap-1.5">
+                    {notification.details.map((detail, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-[11px] gap-4">
+                        <span className="text-slate-400 font-medium">{detail.label}</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[210px]" title={detail.value}>
+                          {detail.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  onClick={() => setNotification(null)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold leading-none cursor-pointer duration-200 flex items-center justify-center gap-1.5 w-full ${
+                    notification.type === 'error'
+                      ? 'bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-500/10'
+                      : notification.type === 'info'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/10'
+                      : 'bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-500/10'
+                  }`}
+                >
+                  Dismiss Message
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

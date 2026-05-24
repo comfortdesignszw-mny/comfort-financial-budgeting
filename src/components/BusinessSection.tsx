@@ -328,6 +328,38 @@ export default function BusinessSection({ data, onUpdateData, currency }: Busine
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
           
+          {/* Business Split Action fast money tracker layout */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base mb-1">⚡ Instant Inflow & Outflow Tracker</h3>
+            <p className="text-xs text-slate-500 mb-6 font-sans">Quickly stream incoming cash (Sales) or log outgoing money (Expenses) without any accounting jargon.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Giant Green Inflow action */}
+              <button
+                onClick={() => setIsLogSaleOpen(true)}
+                className="p-5 border-2 border-emerald-500 hover:border-emerald-600 bg-emerald-50/20 hover:bg-emerald-50/50 dark:bg-emerald-950/10 dark:hover:bg-emerald-950/20 rounded-2xl flex flex-col items-center justify-center text-center gap-2 group transition duration-300 transform hover:-translate-y-1 cursor-pointer shadow-sm"
+              >
+                <div className="p-3 bg-emerald-500 text-white rounded-full group-hover:scale-105 transition">
+                  <ArrowDownCircle size={32} />
+                </div>
+                <span className="text-base font-bold text-emerald-700 dark:text-emerald-400 underline decoration-emerald-400 decoration-2">[ + Log Money Earned (Sales) ]</span>
+                <span className="text-xs text-slate-500 max-w-[280px]">Log money from selling items, catering jobs, rendering services, or pop-up markets!</span>
+              </button>
+
+              {/* Giant Red Outflow action */}
+              <button
+                onClick={() => setIsLogExpenseOpen(true)}
+                className="p-5 border-2 border-red-500 hover:border-red-600 bg-red-50/10 hover:bg-red-50/30 dark:bg-red-950/10 dark:hover:bg-red-950/20 rounded-2xl flex flex-col items-center justify-center text-center gap-2 group transition duration-300 transform hover:-translate-y-1 cursor-pointer shadow-sm"
+              >
+                <div className="p-3 bg-red-500 text-white rounded-full group-hover:scale-105 transition">
+                  <ArrowUpCircle size={32} />
+                </div>
+                <span className="text-base font-bold text-red-700 dark:text-red-400 underline decoration-red-400 decoration-2">[ — Log Money Spent (Expense) ]</span>
+                <span className="text-xs text-slate-500 max-w-[280px]">Instant logging of raw inventory stock, power utility bills, helpers' wages, or kitchen equipment setup!</span>
+              </button>
+            </div>
+          </div>
+
           {/* Traffic Light Monthly Banner */}
           <div className={`p-4 rounded-xl border flex items-center gap-3 shadow-sm transition-all ${trafficLightColor}`}>
             <Info size={24} className="shrink-0" />
@@ -444,38 +476,6 @@ export default function BusinessSection({ data, onUpdateData, currency }: Busine
                   Calculated dynamically from Cash Reservoirs divided by daily spending averages ({formatCurrency(runwayStats.dailyAverage, currency)}/day).
                 </p>
               </div>
-            </div>
-          </div>
-
-          {/* Business Split Action fast money tracker layout */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base mb-1">⚡ Instant Inflow & Outflow Tracker</h3>
-            <p className="text-xs text-slate-500 mb-6 font-sans">Quickly stream incoming cash (Sales) or log outgoing money (Expenses) without any accounting jargon.</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Giant Green Inflow action */}
-              <button
-                onClick={() => setIsLogSaleOpen(true)}
-                className="p-5 border-2 border-emerald-500 hover:border-emerald-600 bg-emerald-50/20 hover:bg-emerald-50/50 dark:bg-emerald-950/10 dark:hover:bg-emerald-950/20 rounded-2xl flex flex-col items-center justify-center text-center gap-2 group transition duration-300 transform hover:-translate-y-1 cursor-pointer shadow-sm"
-              >
-                <div className="p-3 bg-emerald-500 text-white rounded-full group-hover:scale-105 transition">
-                  <ArrowDownCircle size={32} />
-                </div>
-                <span className="text-base font-bold text-emerald-700 dark:text-emerald-400 underline decoration-emerald-400 decoration-2">[ + Log Money Earned (Sales) ]</span>
-                <span className="text-xs text-slate-500 max-w-[280px]">Log money from selling items, catering jobs, rendering services, or pop-up markets!</span>
-              </button>
-
-              {/* Giant Red Outflow action */}
-              <button
-                onClick={() => setIsLogExpenseOpen(true)}
-                className="p-5 border-2 border-red-500 hover:border-red-600 bg-red-50/10 hover:bg-red-50/30 dark:bg-red-950/10 dark:hover:bg-red-950/20 rounded-2xl flex flex-col items-center justify-center text-center gap-2 group transition duration-300 transform hover:-translate-y-1 cursor-pointer shadow-sm"
-              >
-                <div className="p-3 bg-red-500 text-white rounded-full group-hover:scale-105 transition">
-                  <ArrowUpCircle size={32} />
-                </div>
-                <span className="text-base font-bold text-red-700 dark:text-red-400 underline decoration-red-400 decoration-2">[ — Log Money Spent (Expense) ]</span>
-                <span className="text-xs text-slate-500 max-w-[280px]">Instant logging of raw inventory stock, power utility bills, helpers' wages, or kitchen equipment setup!</span>
-              </button>
             </div>
           </div>
 
