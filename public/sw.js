@@ -1,4 +1,4 @@
-const CACHE_NAME = 'comfort-budgeting-v4';
+const CACHE_NAME = 'comfort-budgeting-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -36,8 +36,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event: Cache dynamic content with Stale-while-Revalidate strategy & Single-Page Application (SPA) navigation fallback
 self.addEventListener('fetch', (event) => {
-  // We only cache GET requests pointing back to our own site origin.
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+  // We only cache GET requests pointing back to our own site origin or trusted google fonts CDN
+  const isGoogleFont = event.request.url.startsWith('https://fonts.googleapis.com') || 
+                       event.request.url.startsWith('https://fonts.gstatic.com');
+
+  if (event.request.method !== 'GET' || (!event.request.url.startsWith(self.location.origin) && !isGoogleFont)) {
     return;
   }
 
@@ -57,15 +60,15 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           console.log('[Comfort SW] Offline navigation detected. Redirecting client to cached shell index.');
-          return caches.match('/index.html') || caches.match('/');
+          return caches.match('/index.html', { ignoreSearch: true }) || caches.match('/', { ignoreSearch: true });
         })
     );
     return;
   }
 
-  // General App Assets: Stale-While-Revalidate
+  // General App Assets & Font Caching: Stale-While-Revalidate strategy with ignoreSearch for query robustness
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
@@ -81,7 +84,18 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         });
 
-      return cachedResponse || fetchPromise;
+      // If we have a cached response, serve it immediately for extreme offline speed; 
+      // otherwise, fall back to the dynamic fetch promise, with a safety catch to avoid TypeErrors.
+      return cachedResponse || fetchPromise.catch(() => {
+        if (event.request.headers.get('accept')?.includes('text/html')) {
+          return caches.match('/index.html', { ignoreSearch: true });
+        }
+        return new Response('Comfort Budgeting: Offline Resource Unavailable', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: new Headers({ 'Content-Type': 'text/plain' })
+        });
+      });
     })
   );
 });

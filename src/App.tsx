@@ -1363,6 +1363,15 @@ export default function App() {
                           Intellectual styling components and visual logo configurations are guarded under Comfort Designs properties. We hold the right to enhance or adapt these features to boost accuracy.
                         </p>
                       </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-teal-500 font-mono">5.</span> Smart Notes & Event Scheduling
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Scheduler calendars, reminder associations, and custom formatted rich-text memos are provided for administrative convenience. Linking budget events with persistent note files is handled solely on the client-side. Users are responsible for their own backups.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-950/40 p-3 border border-slate-100 dark:border-slate-850/60 rounded-xl">
@@ -1411,6 +1420,15 @@ export default function App() {
                         </h4>
                         <p className="text-slate-500 dark:text-slate-400 pl-4">
                           If you contact Comfort Designs at the provided phone line (+263772824132), any feedback details you voluntarily share will be kept highly confidential.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-emerald-500 font-mono">5.</span> Memo & Schedule Privacy
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Your formatted draft memos, checklists, chosen font styling parameters, calendar entries, and item linking keys reside completely in local browser-sandboxed files. We have zero ability or permission to view, store, or transmit your typed documents.
                         </p>
                       </div>
                     </div>
