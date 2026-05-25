@@ -50,7 +50,7 @@ export type BusinessTransactionType = 'sale' | 'expense'; // "Money Earned" vs "
 // 2. Rent, Power & Bills (Keeping the lights on)
 // 3. Helping Hands (Staff, wages, contractors)
 // 4. Tools & Setup (Equipment, machinery, computers)
-export type BusinessExpenseCategory = 'stock' | 'bills' | 'helpers' | 'tools';
+export type BusinessExpenseCategory = 'stock' | 'bills' | 'helpers' | 'tools' | 'food' | 'transport' | 'other';
 
 export interface BusinessTransaction {
   id: string;
@@ -58,6 +58,7 @@ export interface BusinessTransaction {
   description: string;
   amount: number;
   category?: BusinessExpenseCategory; // Always present for expense, undefined/optional for sale
+  customCategoryName?: string;
   date: string;
   notes?: string;
   createdAt: string;
@@ -106,6 +107,21 @@ export interface ScheduleEvent {
   createdAt: string;
 }
 
+export interface BusinessAsset {
+  id: string;
+  name: string;
+  value: number;
+  dateAdded: string;
+}
+
+export interface StockProduct {
+  id: string;
+  name: string;
+  value: number;
+  quantity?: number;
+  dateAdded: string;
+}
+
 // Outer application state containing both Personal and Business configurations
 export interface AppData {
   profile: ProfileState;
@@ -116,6 +132,8 @@ export interface AppData {
   businessInvestments: BusinessInvestment[];
   businessTransactions: BusinessTransaction[];
   businessOweItems: OweItem[];
+  businessAssets?: BusinessAsset[];
+  currentStockProducts?: StockProduct[];
   // Notetaker & Scheduler database
   notes?: FinancialNote[];
   events?: ScheduleEvent[];

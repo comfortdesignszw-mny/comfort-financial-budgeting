@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import LZString from 'lz-string';
 import { 
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Trash2, 
   Share2, Download, X, Link2, Check, CheckCircle2, FileText, 
@@ -8,6 +9,26 @@ import {
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { AppData, FinancialNote, ScheduleEvent, EventCategoryType } from '../types';
+
+const compressCategory = (cat: string): string => {
+  switch (cat) {
+    case 'Meeting': return 'M';
+    case 'Consultation': return 'C';
+    case 'Study Seminar': return 'S';
+    case 'General Reminder': return 'R';
+    default: return 'R';
+  }
+};
+
+const decompressCategory = (cat: string): EventCategoryType => {
+  switch (cat) {
+    case 'M': return 'Meeting';
+    case 'C': return 'Consultation';
+    case 'S': return 'Study Seminar';
+    case 'R': return 'General Reminder';
+    default: return 'General Reminder';
+  }
+};
 
 interface SchedulerSectionProps {
   data: AppData;
@@ -145,11 +166,76 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
       const params = new URLSearchParams(window.location.search);
       const sharedData = params.get('share_event');
       if (sharedData) {
-        // Decode base64 safely
-        const decodedString = decodeURIComponent(escape(atob(sharedData)));
-        const parsedEvent: SharedPayload = JSON.parse(decodedString);
-        if (parsedEvent && parsedEvent.title && parsedEvent.category) {
-          setImportedEvent(parsedEvent);
+        let parsedPayload: SharedPayload | null = null;
+        const prefix = sharedData.charAt(0);
+        const actualData = sharedData.slice(1);
+
+        const mapMiniToFull = (parsed: any): SharedPayload => {
+          return {
+            title: parsed.t || '',
+            date: parsed.d || '',
+            time: parsed.m || '',
+            category: decompressCategory(parsed.c || 'R'),
+            description: parsed.s || '',
+            linkedNoteId: parsed.l,
+            linkedNoteTitle: parsed.h,
+            linkedNoteContent: parsed.b
+          };
+        };
+
+        if (prefix === 'z') {
+          // 1. Decrypted compressed LZString format
+          try {
+            const decompressed = LZString.decompressFromEncodedURIComponent(actualData);
+            if (decompressed) {
+              const parsed = JSON.parse(decompressed);
+              parsedPayload = mapMiniToFull(parsed);
+            }
+          } catch (err) {
+            console.debug('[Share Link Parser] Prefix z decompression failure:', err);
+          }
+        } else if (prefix === 'b') {
+          // 2. Base64 format
+          try {
+            const decodedString = decodeURIComponent(escape(atob(actualData)));
+            const parsed = JSON.parse(decodedString);
+            parsedPayload = mapMiniToFull(parsed);
+          } catch (err) {
+            console.debug('[Share Link Parser] Prefix b Base64 decode failure:', err);
+          }
+        } else {
+          // Legacy check with no prefix
+          try {
+            const decompressed = LZString.decompressFromEncodedURIComponent(sharedData);
+            if (decompressed) {
+              const parsed = JSON.parse(decompressed);
+              if (parsed && (parsed.t || parsed.d)) {
+                parsedPayload = mapMiniToFull(parsed);
+              } else if (parsed && parsed.title) {
+                parsedPayload = parsed;
+              }
+            }
+          } catch (lzErr) {
+            // fallback
+          }
+
+          if (!parsedPayload) {
+            try {
+              const decodedString = decodeURIComponent(escape(atob(sharedData)));
+              const parsed = JSON.parse(decodedString);
+              if (parsed && (parsed.t || parsed.d)) {
+                parsedPayload = mapMiniToFull(parsed);
+              } else if (parsed && parsed.title) {
+                parsedPayload = parsed;
+              }
+            } catch (err) {
+              console.debug('[Share Link Parser] Legacy fallback base64 also failed:', err);
+            }
+          }
+        }
+
+        if (parsedPayload && parsedPayload.title) {
+          setImportedEvent(parsedPayload);
           // Clean URL parameter so it doesn't trigger on future refreshes
           const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
           window.history.pushState({ path: newUrl }, '', newUrl);
@@ -522,20 +608,25 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
       // Find the associated budget note if linked
       const linkedNote = ev.linkedNoteId ? notesList.find(n => n.id === ev.linkedNoteId) : undefined;
 
-      // Pack entire event details + associated note metadata into the base64 URL container
-      const payload: SharedPayload = {
-        title: ev.title,
-        date: ev.date,
-        time: ev.time,
-        category: ev.category,
-        description: ev.description,
-        linkedNoteId: ev.linkedNoteId,
-        linkedNoteTitle: linkedNote ? linkedNote.title : undefined,
-        linkedNoteContent: linkedNote ? linkedNote.content : undefined
+      // Pack entire event details + associated note metadata into a minified, compressed URI parameter payload
+      const miniPayload = {
+        t: ev.title,
+        d: ev.date,
+        m: ev.time,
+        c: compressCategory(ev.category),
+        s: ev.description || undefined,
+        h: linkedNote ? linkedNote.title : undefined,
+        b: linkedNote ? linkedNote.content : undefined
       };
 
-      const base64String = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-      const shareUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?share_event=${base64String}`;
+      const jsonStr = JSON.stringify(miniPayload);
+      const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+      const lz = LZString.compressToEncodedURIComponent(jsonStr);
+
+      // Programmatically select whichever compression format produces the absolute shortest URL
+      const isLz = lz.length < b64.length;
+      const shareParam = isLz ? ('z' + lz) : ('b' + b64);
+      const shareUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?share_event=${shareParam}`;
       
       setSharedLinkText(shareUrl);
       

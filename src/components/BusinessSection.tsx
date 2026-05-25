@@ -3,7 +3,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Shield, HelpCircle, Flame, 
   Layers, Package, Building, Users, Trash2, Calendar, 
   Plus, DollarSign, PenTool, CheckSquare, Square, FileCheck, ArrowRight, Eye, Info, X,
-  FileSpreadsheet, FileText
+  FileSpreadsheet, FileText, Utensils, Car
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { 
@@ -53,6 +53,27 @@ export const businessExpenseCategories: Record<BusinessExpenseCategory, { icon: 
     desc: 'Equipment, machinery, computers', 
     color: 'border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 text-indigo-600', 
     bg: 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400' 
+  },
+  food: { 
+    icon: <Utensils size={20} />, 
+    label: '🍲 Daily Food Expenses', 
+    desc: 'Business food and meals', 
+    color: 'border-yellow-550 hover:bg-yellow-50/50 dark:hover:bg-yellow-950/20 text-yellow-600 dark:text-yellow-400', 
+    bg: 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400' 
+  },
+  transport: { 
+    icon: <Car size={20} />, 
+    label: '🚗 Transport Expenses', 
+    desc: 'Wander, taxi, bus, delivery fuel', 
+    color: 'border-teal-500 hover:bg-teal-50/50 dark:hover:bg-teal-950/20 text-teal-600 dark:text-teal-400', 
+    bg: 'bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400' 
+  },
+  other: { 
+    icon: <PenTool size={20} />, 
+    label: '✏️ Other Expenses', 
+    desc: 'Specify another custom expense', 
+    color: 'border-slate-500 hover:bg-slate-50/50 dark:hover:bg-slate-950/20 text-slate-600 dark:text-slate-400', 
+    bg: 'bg-slate-100 dark:bg-slate-950/40 text-slate-700 dark:text-slate-450' 
   }
 };
 
@@ -74,6 +95,16 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const [expenseCategory, setExpenseCategory] = useState<BusinessExpenseCategory>('stock');
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
   const [expenseNotes, setExpenseNotes] = useState('');
+  const [expenseCustomCategory, setExpenseCustomCategory] = useState('');
+
+  // Manage Possession Bucket 2 States
+  const [isPossessionsModalOpen, setIsPossessionsModalOpen] = useState(false);
+  const [possessionsTab, setPossessionsTab] = useState<'assets' | 'stock'>('assets');
+  const [newAssetName, setNewAssetName] = useState('');
+  const [newAssetValue, setNewAssetValue] = useState('');
+  const [newStockName, setNewStockName] = useState('');
+  const [newStockValue, setNewStockValue] = useState('');
+  const [newStockQty, setNewStockQty] = useState('1');
 
   // Personal Injected Cash states ("My Personal Money Put In")
   const [investmentAmount, setInvestmentAmount] = useState('');
@@ -93,7 +124,9 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
   // Calculate global Metrics based on current data
   const cashOnHand = calculateBusinessCashOnHand(data.businessTransactions, data.businessInvestments);
-  const businessOwned = calculateBusinessOwnedAssets(data.businessTransactions);
+  const assetsSum = (data.businessAssets || []).reduce((sum, a) => sum + a.value, 0);
+  const stockProductsSum = (data.currentStockProducts || []).reduce((sum, s) => sum + (s.value * (s.quantity || 1)), 0);
+  const businessOwned = calculateBusinessOwnedAssets(data.businessTransactions) + assetsSum + stockProductsSum;
   const runwayStats = calculateBusinessRunway(data.businessTransactions, cashOnHand);
 
   // Filter current month transactions for traffic lights
@@ -157,6 +190,10 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       alert('Enter description and a positive amount.');
       return;
     }
+    if (expenseCategory === 'other' && !expenseCustomCategory.trim()) {
+      alert('Please specify the custom expense Name.');
+      return;
+    }
 
     const newTx: BusinessTransaction = {
       id: `bt-${Date.now()}`,
@@ -164,6 +201,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       description: expenseDesc.trim(),
       amount,
       category: expenseCategory,
+      customCategoryName: expenseCategory === 'other' ? expenseCustomCategory.trim() : undefined,
       date: expenseDate,
       notes: expenseNotes.trim() || undefined,
       createdAt: new Date().toISOString()
@@ -177,7 +215,74 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     setIsLogExpenseOpen(false);
     setExpenseDesc('');
     setExpenseAmount('');
+    setExpenseCustomCategory('');
     setExpenseNotes('');
+  };
+
+  // Business Possession Assets logging operations
+  const handleAddAssetItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = parseFloat(newAssetValue);
+    if (!newAssetName.trim() || isNaN(val) || val <= 0) {
+      alert('Please enter a valid asset name and positive value.');
+      return;
+    }
+
+    const newAsset = {
+      id: `ba-${Date.now()}`,
+      name: newAssetName.trim(),
+      value: val,
+      dateAdded: new Date().toISOString().split('T')[0]
+    };
+
+    onUpdateData({
+      ...data,
+      businessAssets: [...(data.businessAssets || []), newAsset]
+    });
+
+    setNewAssetName('');
+    setNewAssetValue('');
+  };
+
+  const handleDeleteAssetItem = (id: string) => {
+    onUpdateData({
+      ...data,
+      businessAssets: (data.businessAssets || []).filter(a => a.id !== id)
+    });
+  };
+
+  const handleAddStockItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = parseFloat(newStockValue);
+    const qty = parseInt(newStockQty, 10);
+    if (!newStockName.trim() || isNaN(val) || val <= 0 || isNaN(qty) || qty <= 0) {
+      alert('Please enter a valid stock product name, unit price, and quantity.');
+      return;
+    }
+
+    const newStock = {
+      id: `sp-${Date.now()}`,
+      name: newStockName.trim(),
+      value: val,
+      quantity: qty,
+      dateAdded: new Date().toISOString().split('T')[0]
+    };
+
+    onUpdateData({
+      ...data,
+      currentStockProducts: [...(data.currentStockProducts || []), newStock]
+    });
+
+    setNewStockName('');
+    setNewStockValue('');
+    setNewStockQty('1');
+  };
+
+  const handleDeleteStockItem = (id: string) => {
+    onUpdateData({
+      ...data,
+      currentStockProducts: (data.currentStockProducts || []).filter(s => s.id !== id)
+    });
   };
 
   // Log Investment Cash Out-of-Pocket
@@ -354,7 +459,11 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     
     const rows = listTx.map(t => {
       const sanitizedDescription = `"${(t.description || '').replace(/"/g, '""')}"`;
-      const categoryLabel = t.type === 'sale' ? 'Sale Income' : (businessExpenseCategories[t.category as BusinessExpenseCategory]?.label || t.category || '');
+      const categoryLabel = t.type === 'sale' 
+        ? 'Sale Income' 
+        : t.category === 'other'
+          ? `Other: ${t.customCategoryName || 'General'}`
+          : (businessExpenseCategories[t.category as BusinessExpenseCategory]?.label || t.category || '');
       const typeLabel = t.type === 'sale' ? 'Income' : 'Expense';
       return [
         t.date,
@@ -522,7 +631,11 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
         const dateStr = tx.date;
         const rawDesc = tx.description || 'N/A';
         const truncatedDesc = rawDesc.length > 34 ? rawDesc.substring(0, 31) + '...' : rawDesc;
-        const catText = tx.type === 'sale' ? 'Sale Income' : (businessExpenseCategories[tx.category as BusinessExpenseCategory]?.label || tx.category || '');
+        const catText = tx.type === 'sale' 
+          ? 'Sale Income' 
+          : tx.category === 'other'
+            ? `Other: ${tx.customCategoryName || 'General'}`
+            : (businessExpenseCategories[tx.category as BusinessExpenseCategory]?.label || tx.category || '');
         const cleanedCatText = catText.replace(/[^\x00-\x7F]/g, ""); // clear emoji icons for PDF compatibility
         const typeText = tx.type === 'sale' ? 'INCOME' : 'EXPENSE';
         const amtStr = `${tx.type === 'sale' ? '+' : '-'}${symbol} ${tx.amount.toLocaleString()}`;
@@ -687,7 +800,35 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                   <div className="text-xl font-extrabold text-blue-600 dark:text-sky-400 font-mono mt-3">
                     {formatCurrency(businessOwned, currency)}
                   </div>
-                  <p className="text-[9px] text-slate-400 mt-1">Logged Setup Tools & materials to resell</p>
+                  
+                  {/* Detailed breakdown below */}
+                  <div className="w-full mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 space-y-1 text-left px-2">
+                    <div className="flex justify-between">
+                      <span>⚙️ Expense Tools/Stock:</span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatCurrency(calculateBusinessOwnedAssets(data.businessTransactions), currency)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>🛠️ Business Assets (Equipments):</span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatCurrency(assetsSum, currency)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>📦 Current Stock Value:</span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatCurrency(stockProductsSum, currency)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setIsPossessionsModalOpen(true)}
+                    className="w-full mt-3.5 text-[11px] font-bold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/40 dark:hover:bg-sky-900/40 px-3 py-2 rounded-xl border border-sky-100 dark:border-sky-900/50 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={12} /> Log Assets & Stock
+                  </button>
                 </div>
               </div>
 
@@ -764,7 +905,14 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                         <div className="truncate">
                           <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{t.description}</div>
                           <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                            <span>{isSale ? '💰 Client Sale Inflow' : catDetails?.label || 'Other Spent'}</span>
+                            <span>
+                              {isSale 
+                                ? '💰 Client Sale Inflow' 
+                                : t.category === 'other' 
+                                  ? `✏️ Other: ${t.customCategoryName || 'General'}` 
+                                  : catDetails?.label || 'Other Spent'
+                              }
+                            </span>
                             <span>•</span>
                             <span>{formatDate(t.date)}</span>
                             {t.notes && <span className="italic truncate max-w-[150px]">("{t.notes}")</span>}
@@ -1314,6 +1462,21 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 </div>
               </div>
 
+              {expenseCategory === 'other' && (
+                <div className="bg-slate-50 dark:bg-slate-850 border border-slate-105 dark:border-slate-800 p-3.5 rounded-xl space-y-1.5 animate-in slide-in-from-top-1">
+                  <label className="block text-xs font-bold text-slate-650 dark:text-slate-300">Custom Category Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Legal, Insurances, Vehicle Tax..."
+                    value={expenseCustomCategory}
+                    onChange={(e) => setExpenseCustomCategory(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
+                    required
+                  />
+                  <span className="text-[10px] text-slate-400 block">Provide a custom label for ledger and report cards.</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Amount spent</label>
@@ -1359,6 +1522,234 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bucket 2 Possessions Management Modal */}
+      {isPossessionsModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50 dark:bg-slate-950/20">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50 flex items-center gap-1.5">
+                  🛠️ Bucket 2: Manage Possessions Assets & Stock
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Track machinery, equipment, tools, and resellable inventory that the business owns.
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsPossessionsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Sub Tabs Selection inside modal */}
+            <div className="flex border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/10 px-6 gap-4">
+              <button
+                type="button"
+                onClick={() => setPossessionsTab('assets')}
+                className={`py-3 text-[11px] font-bold border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+                  possessionsTab === 'assets'
+                    ? 'border-blue-500 text-blue-600 dark:text-sky-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                }`}
+              >
+                🔧 Business Assets & Equipments ({formatCurrency(assetsSum, currency)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPossessionsTab('stock')}
+                className={`py-3 text-[11px] font-bold border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+                  possessionsTab === 'stock'
+                    ? 'border-blue-500 text-blue-600 dark:text-sky-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                }`}
+              >
+                📦 Current Resellable Stock ({formatCurrency(stockProductsSum, currency)})
+              </button>
+            </div>
+
+            {/* Scrollable Container */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* Tab 1: Business Assets / Equipments */}
+              {possessionsTab === 'assets' && (
+                <div className="space-y-6">
+                  {/* Entry form */}
+                  <form onSubmit={handleAddAssetItem} className="bg-slate-50 dark:bg-slate-850/40 p-4 rounded-xl border border-slate-105 dark:border-slate-800 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">🏢 Log New Business Asset/Equipment</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Equipment / Asset Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Baking Oven, Commercial Mixer, Delivery Van..."
+                          value={newAssetName}
+                          onChange={(e) => setNewAssetName(e.target.value)}
+                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Estimated Current Value ({currencySymbols[currency] || '$'})</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={newAssetValue}
+                          onChange={(e) => setNewAssetValue(e.target.value)}
+                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-sky-550 dark:hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition cursor-pointer"
+                      >
+                        + Add Asset to Possession Bucket
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* List of current assets */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Current Business Assets Ledger</h4>
+                    {(!data.businessAssets || data.businessAssets.length === 0) ? (
+                      <div className="text-center py-6 text-slate-400 text-[11px] border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                        No custom equipment assets logged yet. Use the entry form above to add your machinery or tools.
+                      </div>
+                    ) : (
+                      <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+                        {data.businessAssets.map((asset) => (
+                          <div key={asset.id} className="p-3 flex items-center justify-between text-xs bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800 transition">
+                            <div className="truncate pr-4">
+                              <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{asset.name}</span>
+                              <span className="text-[9px] text-slate-400">Added: {asset.dateAdded}</span>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="font-mono font-bold text-blue-600 dark:text-sky-450">{formatCurrency(asset.value, currency)}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAssetItem(asset.id)}
+                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition cursor-pointer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Stock Products Inventory */}
+              {possessionsTab === 'stock' && (
+                <div className="space-y-6">
+                  {/* Entry form */}
+                  <form onSubmit={handleAddStockItem} className="bg-slate-50 dark:bg-slate-850/40 p-4 rounded-xl border border-slate-105 dark:border-slate-800 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">📦 Log Current Stock Product or Materials</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-1">
+                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Product Name / Stock Item</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Flour Pack bulk, Raw timber, Coffee beans..."
+                          value={newStockName}
+                          onChange={(e) => setNewStockName(e.target.value)}
+                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Unit Value ({currencySymbols[currency] || '$'})</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={newStockValue}
+                          onChange={(e) => setNewStockValue(e.target.value)}
+                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Quantity</label>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="1"
+                          value={newStockQty}
+                          onChange={(e) => setNewStockQty(e.target.value)}
+                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-sky-550 dark:hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition cursor-pointer"
+                      >
+                        + Add Stock Item to Possession Bucket
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* List of current stock items */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Resellable Stock & Materials Inventory</h4>
+                    {(!data.currentStockProducts || data.currentStockProducts.length === 0) ? (
+                      <div className="text-center py-6 text-slate-400 text-[11px] border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                        No custom stock items logged yet. Use the entry form above to track bulk inventories.
+                      </div>
+                    ) : (
+                      <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+                        {data.currentStockProducts.map((stock) => (
+                          <div key={stock.id} className="p-3 flex items-center justify-between text-xs bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-805 transition">
+                            <div className="truncate pr-4">
+                              <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{stock.name}</span>
+                              <span className="text-[9px] text-slate-400">Qty: {stock.quantity || 1} • Unit: {formatCurrency(stock.value, currency)}</span>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="font-mono font-bold text-blue-600 dark:text-sky-450">{formatCurrency(stock.value * (stock.quantity || 1), currency)}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStockItem(stock.id)}
+                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition cursor-pointer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-105 dark:border-slate-850 flex justify-end gap-2 bg-slate-50 dark:bg-slate-950/10 shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setIsPossessionsModalOpen(false)} 
+                className="px-5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-905 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-white rounded-xl transition cursor-pointer"
+              >
+                Close Asset Manager
+              </button>
+            </div>
+
           </div>
         </div>
       )}
