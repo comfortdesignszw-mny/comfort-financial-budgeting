@@ -37,7 +37,25 @@ export default function App() {
           localStorage.setItem('comfortBudgetingData', JSON.stringify(initialSampleData));
           return initialSampleData;
         }
-        return parsed;
+        // Ensure all arrays are initialized to prevent crashes on legacy local data structures
+        const validated: AppData = {
+          ...initialSampleData,
+          ...parsed,
+          profile: {
+            ...initialSampleData.profile,
+            ...(parsed.profile || {})
+          },
+          transactions: parsed.transactions || [],
+          budgets: parsed.budgets || [],
+          businessInvestments: parsed.businessInvestments || [],
+          businessTransactions: parsed.businessTransactions || [],
+          businessOweItems: parsed.businessOweItems || [],
+          businessAssets: parsed.businessAssets || [],
+          currentStockProducts: parsed.currentStockProducts || [],
+          notes: parsed.notes || initialSampleData.notes || [],
+          events: parsed.events || initialSampleData.events || []
+        };
+        return validated;
       }
     } catch (e) {
       console.error('Error loading localStorage, falling back to sample data', e);

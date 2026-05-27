@@ -78,7 +78,15 @@ export const businessExpenseCategories: Record<BusinessExpenseCategory, { icon: 
 };
 
 export default function BusinessSection({ data, onUpdateData, currency, theme }: BusinessSectionProps) {
+  const businessTransactions = data.businessTransactions || [];
+  const businessInvestments = data.businessInvestments || [];
+  const businessOweItems = data.businessOweItems || [];
+  const businessAssets = data.businessAssets || [];
+  const currentStockProducts = data.currentStockProducts || [];
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'investment' | 'reportCard'>('dashboard');
+  const [txFilter, setTxFilter] = useState<'all' | 'sales' | 'expenses'>('all');
+  const [txSearch, setTxSearch] = useState('');
   
   // Modal configurations
   const [isLogSaleOpen, setIsLogSaleOpen] = useState(false);
@@ -123,18 +131,18 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   });
 
   // Calculate global Metrics based on current data
-  const cashOnHand = calculateBusinessCashOnHand(data.businessTransactions, data.businessInvestments);
-  const assetsSum = (data.businessAssets || []).reduce((sum, a) => sum + a.value, 0);
-  const stockProductsSum = (data.currentStockProducts || []).reduce((sum, s) => sum + (s.value * (s.quantity || 1)), 0);
-  const businessOwned = calculateBusinessOwnedAssets(data.businessTransactions) + assetsSum + stockProductsSum;
-  const runwayStats = calculateBusinessRunway(data.businessTransactions, cashOnHand);
+  const cashOnHand = calculateBusinessCashOnHand(businessTransactions, businessInvestments);
+  const assetsSum = businessAssets.reduce((sum, a) => sum + a.value, 0);
+  const stockProductsSum = currentStockProducts.reduce((sum, s) => sum + (s.value * (s.quantity || 1)), 0);
+  const businessOwned = calculateBusinessOwnedAssets(businessTransactions) + assetsSum + stockProductsSum;
+  const runwayStats = calculateBusinessRunway(businessTransactions, cashOnHand);
 
   // Filter current month transactions for traffic lights
   const now = new Date();
   const currentMonthNum = now.getMonth();
   const currentYearNum = now.getFullYear();
 
-  const currentMonthTransactions = data.businessTransactions.filter((t) => {
+  const currentMonthTransactions = businessTransactions.filter((t) => {
     const d = new Date(t.date);
     return d.getMonth() === currentMonthNum && d.getFullYear() === currentYearNum;
   });
@@ -174,7 +182,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
     onUpdateData({
       ...data,
-      businessTransactions: [newTx, ...data.businessTransactions]
+      businessTransactions: [newTx, ...businessTransactions]
     });
 
     setIsLogSaleOpen(false);
@@ -209,7 +217,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
     onUpdateData({
       ...data,
-      businessTransactions: [newTx, ...data.businessTransactions]
+      businessTransactions: [newTx, ...businessTransactions]
     });
 
     setIsLogExpenseOpen(false);
@@ -304,7 +312,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
     onUpdateData({
       ...data,
-      businessInvestments: [newInv, ...data.businessInvestments]
+      businessInvestments: [newInv, ...businessInvestments]
     });
 
     setInvestmentAmount('');
@@ -316,7 +324,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     if (confirm('Are you sure you want to remove this investment logging?')) {
       onUpdateData({
         ...data,
-        businessInvestments: data.businessInvestments.filter(i => i.id !== id)
+        businessInvestments: businessInvestments.filter(i => i.id !== id)
       });
     }
   };
@@ -325,7 +333,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     if (confirm('Remove this money transaction from your logs?')) {
       onUpdateData({
         ...data,
-        businessTransactions: data.businessTransactions.filter(t => t.id !== id)
+        businessTransactions: businessTransactions.filter(t => t.id !== id)
       });
     }
   };
@@ -349,7 +357,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
     onUpdateData({
       ...data,
-      businessOweItems: [...data.businessOweItems, newOwe]
+      businessOweItems: [...businessOweItems, newOwe]
     });
 
     setOweDesc('');
@@ -359,14 +367,14 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const handleToggleOweItem = (id: string) => {
     onUpdateData({
       ...data,
-      businessOweItems: data.businessOweItems.map(o => o.id === id ? { ...o, completed: !o.completed } : o)
+      businessOweItems: businessOweItems.map(o => o.id === id ? { ...o, completed: !o.completed } : o)
     });
   };
 
   const handleDeleteOweItem = (id: string) => {
     onUpdateData({
       ...data,
-      businessOweItems: data.businessOweItems.filter(o => o.id !== id)
+      businessOweItems: businessOweItems.filter(o => o.id !== id)
     });
   };
 
@@ -374,7 +382,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const getMonthlyReportMetrics = () => {
     const [year, month] = reportMonth.split('-').map(Number);
     // Filter transactions happening in this specific calendar month
-    const listTx = data.businessTransactions.filter(t => {
+    const listTx = businessTransactions.filter(t => {
       const d = new Date(t.date);
       return d.getFullYear() === year && (d.getMonth() + 1) === month;
     });
@@ -385,11 +393,11 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
     // What You Own (Assets) [Calculated as Cash remaining + Cumulative value of logged Tools/Setup]
     // Note: Cash remaining is the global cashOnHand, and setup tools represent static business assets
-    const runToolsSum = data.businessTransactions
+    const runToolsSum = businessTransactions
       .filter(t => t.type === 'expense' && t.category === 'tools')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const stockSum = data.businessTransactions
+    const stockSum = businessTransactions
       .filter(t => t.type === 'expense' && t.category === 'stock')
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -404,7 +412,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   };
 
   const reportMetrics = getMonthlyReportMetrics();
-  const monthInsightSentence = generateMonthlyInsight(data.businessTransactions, reportMonth);
+  const monthInsightSentence = generateMonthlyInsight(businessTransactions, reportMonth);
 
   const getLast6MonthsData = () => {
     const [yearStr, monthStr] = (reportMonth || '2026-05').split('-');
@@ -427,7 +435,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       const label = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear().toString().slice(-2);
       const key = `${mYear}-${String(mMonth + 1).padStart(2, '0')}`;
       
-      const txForMonth = data.businessTransactions.filter(t => {
+      const txForMonth = businessTransactions.filter(t => {
         const txDate = new Date(t.date);
         return txDate.getFullYear() === mYear && txDate.getMonth() === mMonth;
       });
@@ -449,7 +457,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
   const handleExportCSV = () => {
     const [year, month] = reportMonth.split('-').map(Number);
-    const listTx = data.businessTransactions.filter(t => {
+    const listTx = businessTransactions.filter(t => {
       const d = new Date(t.date);
       return d.getFullYear() === year && (d.getMonth() + 1) === month;
     });
@@ -487,7 +495,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
   const handleExportPDF = () => {
     const [year, month] = reportMonth.split('-').map(Number);
-    const listTx = data.businessTransactions.filter(t => {
+    const listTx = businessTransactions.filter(t => {
       const d = new Date(t.date);
       return d.getFullYear() === year && (d.getMonth() + 1) === month;
     });
@@ -758,7 +766,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 </div>
                 <div className="mt-8">
                   <div className="text-3xl font-extrabold text-green-600 dark:text-green-400 font-mono">
-                    {formatCurrency(data.businessTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0), currency)}
+                    {formatCurrency(businessTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0), currency)}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span> Active inflow channel
@@ -806,7 +814,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                     <div className="flex justify-between">
                       <span>⚙️ Expense Tools/Stock:</span>
                       <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
-                        {formatCurrency(calculateBusinessOwnedAssets(data.businessTransactions), currency)}
+                        {formatCurrency(calculateBusinessOwnedAssets(businessTransactions), currency)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -845,7 +853,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 </div>
                 <div className="mt-8">
                   <div className="text-3xl font-extrabold text-red-600 dark:text-red-400 font-mono">
-                    {formatCurrency(data.businessTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0), currency)}
+                    {formatCurrency(businessTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0), currency)}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Active drain outflow
@@ -879,62 +887,183 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
           </div>
 
           {/* Chronological ledger activity list below */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base mb-4">Chronological Business Transactions</h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1">
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Expense Logs & Transaction Ledger</h3>
+                <p className="text-xs text-slate-400">Search and filter your sales inflows and spend deductions</p>
+              </div>
+              
+              {/* Type Filters and Search Box */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/80">
+                  <button
+                    type="button"
+                    onClick={() => setTxFilter('all')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${txFilter === 'all' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    All Flows
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTxFilter('sales')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${txFilter === 'sales' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    Sales Inflow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTxFilter('expenses')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${txFilter === 'expenses' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    Expense Logs
+                  </button>
+                </div>
 
-            {data.businessTransactions.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-xs">No business flow data logged yet. Hit sales or expenses above.</div>
-            ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[350px] overflow-y-auto pr-1">
-                {data.businessTransactions.map((t) => {
-                  const isSale = t.type === 'sale';
-                  const catDetails = !isSale && t.category ? businessExpenseCategories[t.category] : null;
+                <input
+                  type="text"
+                  placeholder="Search logs description..."
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-xl focus:outline-none w-full sm:w-44"
+                />
+              </div>
+            </div>
 
-                  return (
-                    <div key={t.id} className="py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/20 px-2 rounded-lg transition">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {isSale ? (
-                          <span className="p-2 bg-emerald-100/10 text-emerald-500 bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-xl shrink-0">
-                            <ArrowDownCircle size={18} />
+            {/* Deduction & Profit Calculation breakdown statistics banner */}
+            {businessTransactions.length > 0 && (
+              <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800/60 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Total Money Earned</span>
+                  <div className="text-lg font-bold text-slate-800 dark:text-white font-mono">
+                    {formatCurrency(businessTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0), currency)}
+                  </div>
+                  <p className="text-[10px] text-slate-400">Combined gross client sales</p>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Total Deductions (Spent)</span>
+                  <div className="text-lg font-bold text-red-500 font-mono">
+                    -{formatCurrency(businessTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0), currency)}
+                  </div>
+                  <p className="text-[10px] text-slate-400">Total spent from gross earnings</p>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Sales Deduction Rate</span>
+                  {(() => {
+                    const salesVal = businessTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+                    const expensesVal = businessTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+                    const percent = salesVal > 0 ? (expensesVal / salesVal) * 100 : 0;
+                    
+                    let bgBar = 'bg-green-500';
+                    let textMsg = 'Healthy bounds';
+                    if (percent > 65) {
+                      bgBar = 'bg-red-500';
+                      textMsg = 'High spent warnings';
+                    } else if (percent > 35) {
+                      bgBar = 'bg-amber-500';
+                      textMsg = 'Moderate deductions';
+                    }
+
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold font-mono text-slate-700 dark:text-slate-300">
+                            {percent.toFixed(1)}%
                           </span>
-                        ) : (
-                          <span className={`p-2 rounded-xl shrink-0 ${catDetails?.bg || 'bg-red-100 text-red-500 bg-red-50 dark:bg-red-950/30 dark:text-red-400'}`}>
-                            {catDetails?.icon || <ArrowUpCircle size={18} />}
-                          </span>
-                        )}
-                        <div className="truncate">
-                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{t.description}</div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                            <span>
-                              {isSale 
-                                ? '💰 Client Sale Inflow' 
-                                : t.category === 'other' 
-                                  ? `✏️ Other: ${t.customCategoryName || 'General'}` 
-                                  : catDetails?.label || 'Other Spent'
-                              }
-                            </span>
-                            <span>•</span>
-                            <span>{formatDate(t.date)}</span>
-                            {t.notes && <span className="italic truncate max-w-[150px]">("{t.notes}")</span>}
-                          </div>
+                          <span className="text-[10px] uppercase font-semibold text-slate-400">{textMsg}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div className={`h-full ${bgBar}`} style={{ width: `${Math.min(percent, 100)}%` }} />
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-4">
-                        <span className={`text-sm font-bold font-mono ${isSale ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {isSale ? '+' : '-'}{formatCurrency(t.amount, currency)}
-                        </span>
-                        <button
-                          onClick={() => handleDeleteBusinessTransaction(t.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })()}
+                </div>
               </div>
             )}
+
+            {/* Main Log List */}
+            {(() => {
+              const matches = businessTransactions.filter((t) => {
+                // Type filter
+                if (txFilter === 'sales' && t.type !== 'sale') return false;
+                if (txFilter === 'expenses' && t.type !== 'expense') return false;
+
+                // Search query
+                if (txSearch.trim()) {
+                  const q = txSearch.toLowerCase();
+                  const descMatch = (t.description || '').toLowerCase().includes(q);
+                  const noteMatch = (t.notes || '').toLowerCase().includes(q);
+                  const catMatch = t.category ? t.category.toLowerCase().includes(q) : false;
+                  const customCatMatch = t.customCategoryName ? t.customCategoryName.toLowerCase().includes(q) : false;
+                  return descMatch || noteMatch || catMatch || customCatMatch;
+                }
+                return true;
+              });
+
+              if (matches.length === 0) {
+                return (
+                  <div className="text-center py-10 border-2 border-dashed border-slate-100 dark:border-slate-850 rounded-xl text-slate-400 text-xs">
+                    {txSearch.trim() ? 'No transaction logs match your search term.' : 'No transactions found of this selected type.'}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[400px] overflow-y-auto pr-1">
+                  {matches.map((t) => {
+                    const isSale = t.type === 'sale';
+                    const catDetails = !isSale && t.category ? businessExpenseCategories[t.category] : null;
+
+                    return (
+                      <div key={t.id} className="py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/20 px-2 rounded-lg transition">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {isSale ? (
+                            <span className="p-2 bg-emerald-100/10 text-emerald-500 bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-xl shrink-0">
+                              <ArrowDownCircle size={18} />
+                            </span>
+                          ) : (
+                            <span className={`p-2 rounded-xl shrink-0 ${catDetails?.bg || 'bg-red-100 text-red-500 bg-red-50 dark:bg-red-950/30 dark:text-red-400'}`}>
+                              {catDetails?.icon || <ArrowUpCircle size={18} />}
+                            </span>
+                          )}
+                          <div className="truncate">
+                            <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{t.description}</div>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                {isSale 
+                                  ? '💰 Client Sale Inflow' 
+                                  : t.category === 'other' 
+                                    ? `✏️ Other: ${t.customCategoryName || 'General'}` 
+                                    : catDetails?.label || 'Other Spent'
+                                }
+                              </span>
+                              <span>•</span>
+                              <span>{formatDate(t.date)}</span>
+                              {t.notes && <span className="italic truncate text-slate-400 max-w-[150px]">("{t.notes}")</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 ml-4">
+                          <span className={`text-sm font-bold font-mono ${isSale ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {isSale ? '+' : '-'}{formatCurrency(t.amount, currency)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBusinessTransaction(t.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
