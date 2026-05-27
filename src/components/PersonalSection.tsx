@@ -59,6 +59,10 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
   const [budgetDesc, setBudgetDesc] = useState('');
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
 
+  // Savings adjustment and monthly reset states
+  const [deductAmount, setDeductAmount] = useState('');
+  const [showSavingsResetConfirm, setShowSavingsResetConfirm] = useState(false);
+
   // Time metrics filter: Current Month
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -73,10 +77,12 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
   const totalExpenses = monthlyTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const currentBalance = totalIncome - totalExpenses;
 
-  // Savings Goal calculations
-  const savingsProgressVal = Math.max(0, currentBalance);
+  // Savings Goal calculations: lifetime accumulated savings + current month dynamic balance
+  const accumulatedSavings = data.profile.accumulatedSavings || 0;
+  const currentMonthSavings = Math.max(0, currentBalance);
+  const totalSavingsAmount = accumulatedSavings + currentMonthSavings;
   const savingsTarget = data.profile.savingsTarget || 500;
-  const savingsPercent = Math.min(100, (savingsProgressVal / savingsTarget) * 100);
+  const savingsPercent = Math.min(100, (totalSavingsAmount / savingsTarget) * 100);
 
   // 1. Transaction Handlers
   const openAddTxModal = (type: 'income' | 'expense') => {
@@ -146,6 +152,58 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
         ...data,
         transactions: data.transactions.filter(t => t.id !== id)
       });
+    }
+  };
+
+  // Savings and Monthly Reset Handlers
+  const handleDeductFromSavings = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amountToDeduct = parseFloat(deductAmount);
+    if (isNaN(amountToDeduct) || amountToDeduct <= 0) {
+      alert('Please enter a valid positive amount to deduct.');
+      return;
+    }
+
+    const currentAccumulated = data.profile.accumulatedSavings || 0;
+    const updatedSavings = currentAccumulated - amountToDeduct;
+
+    onUpdateData({
+      ...data,
+      profile: {
+        ...data.profile,
+        accumulatedSavings: updatedSavings
+      }
+    });
+
+    setDeductAmount('');
+    alert(`Successfully deducted ${formatCurrency(amountToDeduct, currency)} from savings.`);
+  };
+
+  const handleResetSavingsAccount = () => {
+    onUpdateData({
+      ...data,
+      profile: {
+        ...data.profile,
+        accumulatedSavings: 0
+      },
+      transactions: [] // reset transactions of the month to 0 as well
+    });
+    setShowSavingsResetConfirm(false);
+    alert('Savings account has been reset to 0 and all transactions have been cleared.');
+  };
+
+  const handleMonthlyReset = () => {
+    if (confirm(`Are you sure you want to perform a monthly reset? This will save your current positive balance of ${formatCurrency(Math.max(0, currentBalance), currency)} to your persistent savings and empty all transaction logs to start the next month fresh.`)) {
+      const savingsToAdd = Math.max(0, currentBalance);
+      onUpdateData({
+        ...data,
+        profile: {
+          ...data.profile,
+          accumulatedSavings: (data.profile.accumulatedSavings || 0) + savingsToAdd
+        },
+        transactions: []
+      });
+      alert('Monthly Reset Successful! Savings have been rolled over and transaction log is cleared.');
     }
   };
 
@@ -354,7 +412,7 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
                   <PiggyBank size={18} />
                 </span>
               </div>
-              <div className="text-2xl font-black font-sans text-slate-900 dark:text-white">{formatCurrency(savingsProgressVal, currency)}</div>
+              <div className="text-2xl font-black font-sans text-slate-900 dark:text-white">{formatCurrency(totalSavingsAmount, currency)}</div>
               <div className="mt-1 flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">{savingsPercent.toFixed(0)}% of target</span>
                 <span className="text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wide text-[11px]">{data.profile.savingsGoal || 'Goal'}</span>
@@ -379,6 +437,116 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
             >
               <Plus size={16} /> Add Expense
             </button>
+          </div>
+
+          {/* Savings Vault Ledger Controls & Monthly Reset Card */}
+          <div id="savings-management-ledger" className="glass-card rounded-2xl p-6 border border-amber-500/10 dark:border-amber-500/5 bg-amber-50/5 dark:bg-amber-950/5 shadow-sm space-y-6 mt-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-150 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2.5 bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 rounded-xl">
+                  <PiggyBank size={24} />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">PiggyBank Vault & Monthly Reset Center</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Secure persistent savings, log deducts, and reset monthly transaction ledger metrics</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Total Savings</span>
+                <div className="text-2xl font-black font-sans text-amber-600 dark:text-amber-400">{formatCurrency(totalSavingsAmount, currency)}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Monthly Reset Ledger Container */}
+              <div id="monthly-reset-workflow-box" className="space-y-4">
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">1. Monthly Closer & Roll-over</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                    Wipe this month's transactions to prepare for a fresh ledger cycle. The remaining current balance of <strong>{formatCurrency(currentMonthSavings, currency)}</strong> will be persistently committed to your lifelong savings balance and will not be cleared of.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    id="btn-perform-monthly-reset"
+                    onClick={handleMonthlyReset}
+                    className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Repeat size={14} /> Perform Monthly Reset of Transactions
+                  </button>
+                </div>
+              </div>
+
+              {/* Savings Adjustments (Deduct & Reset) Container */}
+              <div id="savings-manual-adjustments-box" className="space-y-4 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-850 pt-4 md:pt-0 md:pl-8">
+                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">2. Savings Ledger Adjustments</h4>
+
+                {/* Deduct Custom Amount Section */}
+                <form onSubmit={handleDeductFromSavings} className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Deduct balance from Savings</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">{currency}</span>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="Enter amount to deduct..."
+                        value={deductAmount}
+                        onChange={(e) => setDeductAmount(e.target.value)}
+                        className="w-full pl-12 pr-4 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-xl focus:outline-none dark:text-white"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      id="btn-submit-savings-deduct"
+                      className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                    >
+                      Deduct from Savings
+                    </button>
+                  </div>
+                </form>
+
+                {/* Reset Savings Section */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-850">
+                  {!showSavingsResetConfirm ? (
+                    <button
+                      type="button"
+                      id="btn-trigger-reset-savings"
+                      onClick={() => setShowSavingsResetConfirm(true)}
+                      className="w-full py-2 px-4 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200/50 dark:border-red-900/30 text-xs font-bold rounded-xl hover:bg-red-100 transition duration-200 cursor-pointer text-center"
+                    >
+                      Reset Savings balance
+                    </button>
+                  ) : (
+                    <div id="savings-reset-confirmation-pop" className="bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/40 p-4 rounded-xl space-y-3 animate-in fade-in zoom-in duration-200">
+                      <p className="text-xs font-semibold text-red-800 dark:text-red-300">
+                        Are you sure you want to remove all the total amount from your savings account
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          type="button"
+                          id="btn-execute-savings-reset"
+                          onClick={handleResetSavingsAccount}
+                          className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold rounded-xl transition cursor-pointer"
+                        >
+                          reset savings account
+                        </button>
+                        <button
+                          type="button"
+                          id="btn-cancel-savings-reset"
+                          onClick={() => setShowSavingsResetConfirm(false)}
+                          className="w-full py-1.5 px-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
+                        >
+                          Cancel, Keep savings
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Charts & Budget Overview */}

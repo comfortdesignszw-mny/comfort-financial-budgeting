@@ -15,6 +15,7 @@ export interface ProfileState {
   companyName?: string;
   companyPhone?: string;
   companyEmail?: string;
+  accumulatedSavings?: number;
 }
 
 // Personal space types
