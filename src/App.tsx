@@ -52,6 +52,9 @@ export default function App() {
           businessOweItems: parsed.businessOweItems || [],
           businessAssets: parsed.businessAssets || [],
           currentStockProducts: parsed.currentStockProducts || [],
+          productsInventory: parsed.productsInventory || [],
+          businessCustomers: parsed.businessCustomers || [],
+          businessDocuments: parsed.businessDocuments || [],
           notes: parsed.notes || initialSampleData.notes || [],
           events: parsed.events || initialSampleData.events || []
         };
@@ -438,7 +441,14 @@ export default function App() {
       budgets: [],
       businessInvestments: [],
       businessTransactions: [],
-      businessOweItems: []
+      businessOweItems: [],
+      businessAssets: [],
+      currentStockProducts: [],
+      productsInventory: [],
+      businessCustomers: [],
+      businessDocuments: [],
+      notes: [],
+      events: []
     };
     setData(freshData);
     setDataSpace('personal');

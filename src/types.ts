@@ -123,6 +123,49 @@ export interface StockProduct {
   dateAdded: string;
 }
 
+export interface BusinessProduct {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  quantity: number;
+  createdAt: string;
+}
+
+export interface BusinessCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  company: string;
+  email: string;
+  address: string;
+  createdAt: string;
+}
+
+export interface BusinessDocumentItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+export interface BusinessDocument {
+  id: string;
+  type: 'quotation' | 'invoice';
+  number: string;
+  customerId: string;
+  customerName?: string;
+  items: BusinessDocumentItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  date: string;
+  dueDate?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 // Outer application state containing both Personal and Business configurations
 export interface AppData {
   profile: ProfileState;
@@ -135,6 +178,9 @@ export interface AppData {
   businessOweItems: OweItem[];
   businessAssets?: BusinessAsset[];
   currentStockProducts?: StockProduct[];
+  productsInventory?: BusinessProduct[];
+  businessCustomers?: BusinessCustomer[];
+  businessDocuments?: BusinessDocument[];
   // Notetaker & Scheduler database
   notes?: FinancialNote[];
   events?: ScheduleEvent[];

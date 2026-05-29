@@ -84,7 +84,11 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const businessAssets = data.businessAssets || [];
   const currentStockProducts = data.currentStockProducts || [];
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'investment' | 'reportCard'>('dashboard');
+  const productsInventory = data.productsInventory || [];
+  const businessCustomers = data.businessCustomers || [];
+  const businessDocuments = data.businessDocuments || [];
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'investment' | 'reportCard' | 'inventory' | 'customers' | 'documents'>('dashboard');
   const [txFilter, setTxFilter] = useState<'all' | 'sales' | 'expenses'>('all');
   const [txSearch, setTxSearch] = useState('');
   
@@ -123,6 +127,33 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const [oweDesc, setOweDesc] = useState('');
   const [oweAmount, setOweAmount] = useState('');
   const [oweDueDate, setOweDueDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Products Inventory States
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [prodName, setProdName] = useState('');
+  const [prodDesc, setProdDesc] = useState('');
+  const [prodCat, setProdCat] = useState('');
+  const [prodPrice, setProdPrice] = useState('');
+  const [prodQty, setProdQty] = useState('');
+
+  // Customer Database States
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [custCompany, setCustCompany] = useState('');
+  const [custEmail, setCustEmail] = useState('');
+  const [custAddress, setCustAddress] = useState('');
+
+  // Document (Quotation/Invoice) States
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+  const [docType, setDocType] = useState<'quotation' | 'invoice'>('quotation');
+  const [docCustomerId, setDocCustomerId] = useState('');
+  const [docNumber, setDocNumber] = useState('');
+  const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
+  const [docItems, setDocItems] = useState<{ productId: string; name: string; quantity: number; price: number }[]>([]);
+  const [docNotes, setDocNotes] = useState('');
+  const [itemToAdd, setItemToAdd] = useState('');
+  const [itemAddQty, setItemAddQty] = useState('1');
 
   // Month selection for Report Card (Format: YYYY-MM)
   const [reportMonth, setReportMonth] = useState<string>(() => {
@@ -376,6 +407,142 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       ...data,
       businessOweItems: businessOweItems.filter(o => o.id !== id)
     });
+  };
+
+  // --- PRODUCTS, CUSTOMERS & DOCUMENTS HANDLERS ---
+  const handleSaveProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prodName || !prodPrice) return;
+    
+    const newProduct = {
+      id: `prod-${Date.now()}`,
+      name: prodName,
+      description: prodDesc,
+      category: prodCat,
+      price: parseFloat(prodPrice) || 0,
+      quantity: parseInt(prodQty, 10) || 0,
+      createdAt: new Date().toISOString()
+    };
+    
+    onUpdateData({ ...data, productsInventory: [newProduct, ...productsInventory] });
+    
+    setProdName(''); setProdDesc(''); setProdCat(''); setProdPrice(''); setProdQty('');
+    setIsProductModalOpen(false);
+  };
+  
+  const handleDeleteProduct = (id: string) => {
+    if (confirm('Delete this product from your inventory?')) {
+      onUpdateData({ ...data, productsInventory: productsInventory.filter(p => p.id !== id) });
+    }
+  };
+
+  const handleSaveCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!custName) return;
+    
+    const newCustomer = {
+      id: `cust-${Date.now()}`,
+      name: custName,
+      phone: custPhone,
+      company: custCompany,
+      email: custEmail,
+      address: custAddress,
+      createdAt: new Date().toISOString()
+    };
+    
+    onUpdateData({ ...data, businessCustomers: [newCustomer, ...businessCustomers] });
+    
+    setCustName(''); setCustPhone(''); setCustCompany(''); setCustEmail(''); setCustAddress('');
+    setIsCustomerModalOpen(false);
+  };
+
+  const handleDeleteCustomer = (id: string) => {
+    if (confirm('Delete this customer?')) {
+      onUpdateData({ ...data, businessCustomers: businessCustomers.filter(c => c.id !== id) });
+    }
+  };
+
+  const handleAddDocItem = () => {
+    if (!itemToAdd || !itemAddQty) return;
+    const selectedProd = productsInventory.find(p => p.id === itemToAdd);
+    if (!selectedProd) return;
+    
+    const qty = parseInt(itemAddQty, 10) || 1;
+    setDocItems([...docItems, { 
+      productId: selectedProd.id, 
+      name: selectedProd.name, 
+      quantity: qty, 
+      price: selectedProd.price 
+    }]);
+    
+    setItemToAdd(''); setItemAddQty('1');
+  };
+
+  const handleRemoveDocItem = (index: number) => {
+    setDocItems(docItems.filter((_, i) => i !== index));
+  };
+
+  const handleSaveDocument = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docCustomerId || docItems.length === 0) {
+      alert("Please select a customer and add at least one item.");
+      return;
+    }
+    
+    let targetCustomerId = docCustomerId;
+    let targetCustomerName = '';
+    
+    if (docCustomerId === 'new') {
+      if (!custName) {
+        alert("Please provide the new customer's name");
+        return;
+      }
+      if (confirm('Save new Customer to the database?')) {
+        targetCustomerId = `cust-${Date.now()}`;
+        const newCustomer = {
+          id: targetCustomerId, name: custName, phone: custPhone, company: custCompany, email: custEmail, address: custAddress, createdAt: new Date().toISOString()
+        };
+        onUpdateData({ ...data, businessCustomers: [newCustomer, ...businessCustomers] });
+      } else {
+        // Did not want to save, keep abstract reference... wait, it fails relational integrity gently, we'll assign 'temp' ID
+        targetCustomerId = `temp-${Date.now()}`;
+      }
+      targetCustomerName = custName;
+    } else {
+       targetCustomerName = businessCustomers.find(c => c.id === docCustomerId)?.name || 'Unknown';
+    }
+
+    const subtotal = docItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const tax = 0; // Keeping simple
+    const total = subtotal + tax;
+
+    const newDoc = {
+      id: `doc-${Date.now()}`,
+      type: docType,
+      number: docNumber || `${docType === 'quotation' ? 'Q-' : 'INV-'}${Math.floor(Math.random() * 10000)}`,
+      customerId: targetCustomerId,
+      customerName: targetCustomerName,
+      items: docItems,
+      subtotal,
+      tax,
+      total,
+      date: docDate,
+      notes: docNotes,
+      createdAt: new Date().toISOString()
+    };
+    
+    onUpdateData({ ...data, businessDocuments: [newDoc, ...businessDocuments] });
+    
+    // reset form
+    setDocCustomerId(''); setDocNumber(''); setDocItems([]); setDocNotes('');
+    setCustName(''); setCustPhone(''); setCustCompany(''); setCustEmail(''); setCustAddress('');
+    setIsDocumentModalOpen(false);
+  };
+  
+  const handleDeleteDocument = (id: string) => {
+    if (confirm('Delete this document?')) {
+      onUpdateData({ ...data, businessDocuments: businessDocuments.filter(d => d.id !== id) });
+    }
   };
 
   // Compile calculations for "End-of-Month Report Card"
@@ -671,35 +838,71 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   return (
     <div className="space-y-6">
       {/* 2nd Tier Navigation */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`px-5 py-3 font-semibold text-sm transition-all relative ${
-            activeTab === 'dashboard' 
-              ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500' 
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'dashboard'
+              ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
           }`}
         >
+          <Layers size={20} className={activeTab === 'dashboard' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
           Buckets & Pipes Dashboard
         </button>
         <button
           onClick={() => setActiveTab('investment')}
-          className={`px-5 py-3 font-semibold text-sm transition-all relative ${
-            activeTab === 'investment' 
-              ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500' 
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'investment'
+              ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
           }`}
         >
+          <DollarSign size={20} className={activeTab === 'investment' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
           My Personal Money Put In
         </button>
         <button
-          onClick={() => setActiveTab('reportCard')}
-          className={`px-5 py-3 font-semibold text-sm transition-all relative ${
-            activeTab === 'reportCard' 
-              ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500' 
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          onClick={() => setActiveTab('inventory')}
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'inventory'
+              ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
           }`}
         >
+          <Package size={20} className={activeTab === 'inventory' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
+          Products Inventory
+        </button>
+        <button
+          onClick={() => setActiveTab('customers')}
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'customers'
+              ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
+          }`}
+        >
+          <Users size={20} className={activeTab === 'customers' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
+          Customer Database
+        </button>
+        <button
+          onClick={() => setActiveTab('documents')}
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'documents'
+              ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
+          }`}
+        >
+          <FileText size={20} className={activeTab === 'documents' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
+          Quotations & Invoices
+        </button>
+        <button
+          onClick={() => setActiveTab('reportCard')}
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'reportCard'
+              ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
+          }`}
+        >
+          <FileSpreadsheet size={20} className={activeTab === 'reportCard' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
           End-of-Month Report Card
         </button>
       </div>
@@ -1176,6 +1379,274 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
         </div>
       )}
 
+      {/* Products Inventory Section */}
+      {activeTab === 'inventory' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Products & Services Inventory</h3>
+              <p className="text-xs text-slate-400">Manage what you sell. Add products or services.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsProductModalOpen(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Plus size={14} /> Add Product/Service
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+            {productsInventory.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-xs border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl">No products in inventory. Start by adding one.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {productsInventory.map(p => (
+                  <div key={p.id} className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-blue-200 dark:hover:border-blue-900/50 transition bg-slate-50/50 dark:bg-slate-950/30">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-slate-800 dark:text-slate-100 pr-2">{p.name}</h4>
+                        <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider shrink-0">{p.category || 'General'}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-4 line-clamp-2">{p.description || 'No description provided'}</p>
+                    </div>
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/80">
+                      <div>
+                        <div className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatCurrency(p.price, currency)}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">Stock/Qty: {p.quantity}</div>
+                      </div>
+                      <button type="button" onClick={() => handleDeleteProduct(p.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition cursor-pointer">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Customer Database Section */}
+      {activeTab === 'customers' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Customer Database</h3>
+              <p className="text-xs text-slate-400">Keep track of your clients and valuable contacts.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCustomerModalOpen(true)}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Plus size={14} /> Add Customer
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            {businessCustomers.length === 0 ? (
+              <div className="text-center py-10 border-2 m-5 border-dashed border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 text-xs">No customers saved yet. Add a customer to start building your database.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <tr>
+                      <th className="px-5 py-3">Client Name</th>
+                      <th className="px-5 py-3">Company</th>
+                      <th className="px-5 py-3">Contact Email & Phone</th>
+                      <th className="px-5 py-3">Address</th>
+                      <th className="px-5 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {businessCustomers.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition">
+                        <td className="px-5 py-4 font-bold text-slate-800 dark:text-slate-200">{c.name}</td>
+                        <td className="px-5 py-4 text-xs font-medium">{c.company || '-'}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col text-xs space-y-1">
+                            <span className="font-medium">{c.email || 'No email'}</span>
+                            <span className="text-slate-400">{c.phone || 'No phone'}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-xs max-w-[200px] truncate text-slate-500">{c.address || '-'}</td>
+                        <td className="px-5 py-4 text-right">
+                          <button type="button" onClick={() => handleDeleteCustomer(c.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition cursor-pointer">
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Quotations & Invoices Section */}
+      {activeTab === 'documents' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Quotations & Invoices</h3>
+              <p className="text-xs text-slate-400">Create, track, and download professional PDF documents.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setDocType('quotation'); setIsDocumentModalOpen(true); }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition cursor-pointer gap-2 flex items-center"
+              >
+                <Plus size={14} /> Create Quotation
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDocType('invoice'); setIsDocumentModalOpen(true); }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer gap-2 flex items-center"
+              >
+                <Plus size={14} /> Create Invoice
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+            {businessDocuments.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl text-slate-400 text-xs">No documents created yet. Generate one above.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {businessDocuments.map(doc => (
+                  <div key={doc.id} className="border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-5 flex flex-col justify-between hover:shadow-md transition bg-slate-50/30 dark:bg-slate-950/20">
+                    <div>
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className={`text-[10px] font-black tracking-wider uppercase px-2.5 py-1 rounded-md ${doc.type === 'invoice' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400'}`}>
+                            {doc.type}
+                          </span>
+                          <h4 className="font-bold text-slate-800 dark:text-slate-100 mt-2 text-lg font-mono">{doc.number}</h4>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono font-medium">{formatDate(doc.date)}</span>
+                      </div>
+                      <div className="text-sm mt-3 text-slate-600 dark:text-slate-300 flex flex-col gap-1">
+                        <div><span className="font-semibold text-slate-400 text-xs uppercase tracking-wider mr-2">Client:</span> {doc.customerName}</div>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-3 line-clamp-2 leading-relaxed bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-lg">
+                        <span className="font-semibold mr-1">Items:</span> {doc.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-end mt-5 pt-4 border-t border-slate-200/60 dark:border-slate-800/60">
+                      <div>
+                        <div className="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Total Amount</div>
+                        <div className="text-xl font-bold font-mono text-slate-800 dark:text-slate-100 line-clamp-1">{formatCurrency(doc.total, currency)}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button" 
+                          onClick={() => {
+                            const pdf = new jsPDF();
+                            
+                            // Branding/Header
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setFontSize(28);
+                            pdf.setTextColor(doc.type === 'invoice' ? '#059669' : '#4f46e5');
+                            pdf.text((doc.type === 'invoice' ? 'INVOICE' : 'QUOTATION'), 14, 24);
+                            
+                            pdf.setTextColor('#334155');
+                            pdf.setFontSize(10);
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.text(`Document #: ${doc.number}`, 14, 34);
+                            pdf.text(`Date Issued: ${formatDate(doc.date)}`, 14, 40);
+                            
+                            pdf.setDrawColor('#e2e8f0');
+                            pdf.line(14, 46, 196, 46);
+
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('Billed To:', 14, 56);
+                            pdf.setFont('helvetica', 'normal');
+                            const customer = businessCustomers.find(c => c.id === doc.customerId);
+                            pdf.text(doc.customerName || 'Unknown Client', 14, 62);
+                            if (customer) {
+                              if (customer.company) pdf.text(customer.company, 14, 68);
+                              if (customer.email) pdf.text(`Email: ${customer.email}`, 14, 74);
+                              if (customer.phone) pdf.text(`Phone: ${customer.phone}`, 14, 80);
+                            }
+
+                            let lastY = customer ? 94 : 74;
+                            
+                            // Table Header
+                            pdf.setFillColor(248, 250, 252);
+                            pdf.rect(14, lastY, 182, 12, 'F');
+                            pdf.setFontSize(9);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setTextColor('#475569');
+                            pdf.text('ITEM DESCRIPTION', 18, lastY + 8);
+                            pdf.text('QTY', 120, lastY + 8);
+                            pdf.text('PRICE', 144, lastY + 8);
+                            pdf.text('AMOUNT', 170, lastY + 8);
+                            
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.setTextColor('#334155');
+                            lastY += 20;
+                            
+                            doc.items.forEach(item => {
+                              const lineTotal = item.quantity * item.price;
+                              pdf.text(item.name.substring(0, 50), 18, lastY);
+                              pdf.text(item.quantity.toString(), 120, lastY);
+                              pdf.text(formatCurrency(item.price, currency).replace(currencySymbols[currency] || '$', ''), 144, lastY);
+                              pdf.text(formatCurrency(lineTotal, currency).replace(currencySymbols[currency] || '$', ''), 170, lastY);
+                              lastY += 10;
+                            });
+                            
+                            lastY += 6;
+                            pdf.setDrawColor('#e2e8f0');
+                            pdf.line(14, lastY, 196, lastY);
+                            lastY += 12;
+                            
+                            pdf.setFontSize(12);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('TOTAL AMOUNT DUE:', 110, lastY);
+                            pdf.text(formatCurrency(doc.total, currency), 170, lastY);
+                            
+                            if (doc.notes) {
+                                lastY += 30;
+                                pdf.setFont('helvetica', 'italic');
+                                pdf.setFontSize(9);
+                                pdf.setTextColor('#64748b');
+                                const notesLines = pdf.splitTextToSize(doc.notes, 180);
+                                pdf.text(notesLines, 14, lastY);
+                            }
+                            
+                            // Footer
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.setFontSize(8);
+                            pdf.setTextColor('#94a3b8');
+                            pdf.text('Generated via Comfort Budgeting / CashFlow Simple - Thank you for your business!', 14, 280);
+
+                            pdf.save(`${doc.type}_${doc.number}.pdf`);
+                          }} 
+                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Download size={14} /> Download PDF
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDocument(doc.id)} 
+                          className="p-2 ml-1 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition cursor-pointer border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* End-of-Month Report Card Section */}
       {activeTab === 'reportCard' && (
         <div className="space-y-6">
@@ -1462,6 +1933,219 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Add Product */}
+      {isProductModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-[9999] backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-xl animate-in fade-in zoom-in duration-200 my-auto">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Add Product / Service</h3>
+              <button type="button" onClick={() => setIsProductModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveProduct} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Name</label>
+                <input required type="text" value={prodName} onChange={e => setProdName(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="e.g. Website Design Package" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Description</label>
+                <textarea rows={2} value={prodDesc} onChange={e => setProdDesc(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Details of the product or service..." />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Price</label>
+                  <input required type="number" step="any" min="0" value={prodPrice} onChange={e => setProdPrice(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Quantity/Stock</label>
+                  <input type="number" min="0" value={prodQty} onChange={e => setProdQty(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Optional" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Category</label>
+                <input type="text" value={prodCat} onChange={e => setProdCat(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="e.g. Service, Hardware, etc." />
+              </div>
+              <div className="pt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setIsProductModalOpen(false)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm">Save Product</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Add Customer */}
+      {isCustomerModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-[9999] backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-md w-full overflow-hidden shadow-xl animate-in fade-in zoom-in duration-200 my-auto">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Add Customer</h3>
+              <button type="button" onClick={() => setIsCustomerModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveCustomer} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Client Name</label>
+                <input required type="text" value={custName} onChange={e => setCustName(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="John Doe" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Company</label>
+                <input type="text" value={custCompany} onChange={e => setCustCompany(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Company Name" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Email</label>
+                  <input type="email" value={custEmail} onChange={e => setCustEmail(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Phone</label>
+                  <input type="text" value={custPhone} onChange={e => setCustPhone(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Address</label>
+                <textarea rows={2} value={custAddress} onChange={e => setCustAddress(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Client physical or postal address" />
+              </div>
+              <div className="pt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setIsCustomerModalOpen(false)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm">Save Client</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Create Document */}
+      {isDocumentModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-[9999] backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-2xl w-full overflow-hidden shadow-xl animate-in fade-in zoom-in duration-200 my-auto">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm capitalize">Create {docType}</h3>
+              <button type="button" onClick={() => setIsDocumentModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveDocument} className="p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Select Customer</label>
+                  <select 
+                    value={docCustomerId} 
+                    onChange={e => {
+                      setDocCustomerId(e.target.value);
+                      if (e.target.value === 'new') {
+                        setCustName(''); setCustCompany(''); setCustPhone(''); setCustEmail(''); setCustAddress('');
+                      }
+                    }} 
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100"
+                  >
+                    <option value="">-- Choose existing or new --</option>
+                    <option value="new">+ Add New Customer</option>
+                    {businessCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">{docType === 'invoice' ? 'Invoice' : 'Quotation'} #</label>
+                    <input type="text" value={docNumber} onChange={e => setDocNumber(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Auto-generated" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Date Issued</label>
+                    <input type="date" value={docDate} onChange={e => setDocDate(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Show new customer inline form if "new" is selected */}
+              {docCustomerId === 'new' && (
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3">
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">New Customer Details</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" placeholder="Full Name *" value={custName} onChange={e => setCustName(e.target.value)} required={docCustomerId === 'new'} className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200" />
+                    <input type="text" placeholder="Company Name" value={custCompany} onChange={e => setCustCompany(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200" />
+                    <input type="email" placeholder="Email" value={custEmail} onChange={e => setCustEmail(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200" />
+                    <input type="text" placeholder="Phone" value={custPhone} onChange={e => setCustPhone(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200" />
+                  </div>
+                  <textarea rows={1} placeholder="Address" value={custAddress} onChange={e => setCustAddress(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"></textarea>
+                </div>
+              )}
+
+              {/* Items Section */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-3 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-2">
+                  <select 
+                    value={itemToAdd} 
+                    onChange={e => setItemToAdd(e.target.value)} 
+                    className="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200"
+                  >
+                    <option value="">-- Add product from inventory --</option>
+                    {productsInventory.map(p => <option key={p.id} value={p.id}>{p.name} ({formatCurrency(p.price, currency)})</option>)}
+                  </select>
+                  <div className="flex gap-2">
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={itemAddQty} 
+                      onChange={e => setItemAddQty(e.target.value)} 
+                      placeholder="Qty" 
+                      className="w-16 px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 text-center" 
+                    />
+                    <button type="button" onClick={handleAddDocItem} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold transition cursor-pointer">Add</button>
+                  </div>
+                </div>
+                <div className="p-0 max-h-[150px] overflow-y-auto overflow-x-auto">
+                  {docItems.length === 0 ? (
+                    <div className="text-center py-6 text-slate-400 text-xs">No items added yet.</div>
+                  ) : (
+                    <table className="w-full text-left text-xs bg-white dark:bg-transparent min-w-[350px]">
+                      <thead className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900">
+                        <tr>
+                          <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">Item</th>
+                          <th className="px-4 py-2 font-semibold w-16 text-center text-slate-600 dark:text-slate-300">Qty</th>
+                          <th className="px-4 py-2 font-semibold w-24 text-right text-slate-600 dark:text-slate-300">Price</th>
+                          <th className="px-4 py-2 font-semibold w-24 text-right text-slate-600 dark:text-slate-300">Total</th>
+                          <th className="px-4 py-2 w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {docItems.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 text-slate-700 dark:text-slate-300">
+                            <td className="px-4 py-2 font-medium truncate max-w-[150px]">{item.name}</td>
+                            <td className="px-4 py-2 text-center">{item.quantity}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(item.price, currency)}</td>
+                            <td className="px-4 py-2 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(item.quantity * item.price, currency)}</td>
+                            <td className="px-4 py-2 text-center">
+                              <button type="button" onClick={() => handleRemoveDocItem(idx)} className="text-slate-400 hover:text-red-500 cursor-pointer"><X size={14} /></button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 p-3 flex justify-between items-center text-sm">
+                  <span className="font-bold text-slate-600 dark:text-slate-400">Total Amount:</span>
+                  <span className="font-black text-lg text-slate-800 dark:text-slate-100">{formatCurrency(docItems.reduce((acc, it) => acc + (it.price * it.quantity), 0), currency)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Notes / Terms (Optional)</label>
+                <textarea rows={2} value={docNotes} onChange={e => setDocNotes(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Additional conditions, bank details, or thank you note..." />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setIsDocumentModalOpen(false)} className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
+                <button type="submit" className={`px-5 py-2.5 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm ${docType === 'invoice' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>Generate {docType === 'invoice' ? 'Invoice' : 'Quotation'}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
