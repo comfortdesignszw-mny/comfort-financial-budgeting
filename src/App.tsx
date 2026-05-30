@@ -15,6 +15,7 @@ import { initialSampleData } from './sampleData';
 import { formatCurrency, currencySymbols } from './utils';
 import PersonalSection from './components/PersonalSection';
 import BusinessSection from './components/BusinessSection';
+import HRSection from './components/HRSection';
 import SchedulerSection from './components/SchedulerSection';
 import comfortLogo from './assets/images/comfort_logo_brand_1779617398401.png';
 
@@ -67,7 +68,7 @@ export default function App() {
   });
 
   // Active workspace section
-  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'profile' | 'scheduler'>('personal');
+  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'hr' | 'scheduler' | 'profile'>('personal');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Redirect to Scheduler space immediately if a shared schedule deep-link is opened
@@ -598,6 +599,21 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => { setDataSpace('hr'); setIsMobileSidebarOpen(false); }}
+              className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
+                dataSpace === 'hr'
+                  ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 ring-1 ring-purple-500/20 shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <UserCog size={18} className={dataSpace === 'hr' ? 'text-purple-500' : 'text-slate-400'} />
+              <div className="text-xs">
+                <span className="block font-bold">Human Resources</span>
+                <span className="text-[9px] text-slate-400">Team & Payroll</span>
+              </div>
+            </button>
+
+            <button
               onClick={() => { setDataSpace('scheduler'); setIsMobileSidebarOpen(false); }}
               className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
                 dataSpace === 'scheduler'
@@ -736,6 +752,14 @@ export default function App() {
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}
               theme={theme}
+            />
+          )}
+
+          {dataSpace === 'hr' && (
+            <HRSection 
+              data={data}
+              onUpdateData={handleUpdateData}
+              currency={data.profile.currency}
             />
           )}
 

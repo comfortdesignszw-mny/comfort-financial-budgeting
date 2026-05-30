@@ -167,6 +167,44 @@ export interface BusinessDocument {
   createdAt: string;
 }
 
+// HR Management Types
+export interface HREmployee {
+  id: string;
+  employeeId: string;
+  name: string;
+  jobTitle: string;
+  department: string;
+  dateHired: string;
+  phone: string;
+  email: string;
+  address: string;
+  createdAt: string;
+}
+
+export interface HRPayroll {
+  id: string;
+  employeeId: string;
+  month: string; // e.g. "2024-05"
+  basicSalary: number;
+  
+  // Earnings
+  overtime: number;
+  bonus: number;
+  incentives: number;
+  otherEarnings: number;
+  otherEarningsDesc?: string;
+  
+  // Deductions
+  nassa: number;
+  paye: number;
+  aidsLevy: number;
+  
+  grossSalary: number;
+  netSalary: number;
+  
+  createdAt: string;
+}
+
 // Outer application state containing both Personal and Business configurations
 export interface AppData {
   profile: ProfileState;
@@ -182,6 +220,9 @@ export interface AppData {
   productsInventory?: BusinessProduct[];
   businessCustomers?: BusinessCustomer[];
   businessDocuments?: BusinessDocument[];
+  // HR Database
+  hrEmployees?: HREmployee[];
+  hrPayrolls?: HRPayroll[];
   // Notetaker & Scheduler database
   notes?: FinancialNote[];
   events?: ScheduleEvent[];
