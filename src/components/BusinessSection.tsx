@@ -40,6 +40,13 @@ export const businessExpenseCategories: Record<BusinessExpenseCategory, { icon: 
     color: 'border-sky-500 hover:bg-sky-50/50 dark:hover:bg-sky-950/20 text-sky-600', 
     bg: 'bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400' 
   },
+  wages: { 
+    icon: <Users size={20} />, 
+    label: '💰 Wages & Salaries', 
+    desc: 'Payroll and team payments', 
+    color: 'border-purple-500 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 text-purple-600', 
+    bg: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400' 
+  },
   helpers: { 
     icon: <Users size={20} />, 
     label: '👥 Helping Hands', 

@@ -35,6 +35,8 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
   // Payroll Modal
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [payEditId, setPayEditId] = useState<string | null>(null);
+  const [payrollFilterMonth, setPayrollFilterMonth] = useState(new Date().toISOString().slice(0, 7));
+
   
   const [payEmpId, setPayEmpId] = useState('');
   const [payMonth, setPayMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
@@ -203,6 +205,15 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
     const aids = parseFloat(payAids) || 0;
     
     const net = gross - (nassa + paye + aids);
+    const empName = employees.find(e => e.id === payEmpId)?.name || 'Unknown Employee';
+
+    let existingTxId: string | undefined;
+    if (payEditId) {
+      const existingPay = payrolls.find(p => p.id === payEditId);
+      existingTxId = existingPay?.businessTransactionId;
+    }
+
+    const txId = existingTxId || crypto.randomUUID();
 
     const pay: HRPayroll = {
       id: payEditId || crypto.randomUUID(),
@@ -219,14 +230,35 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
       aidsLevy: aids,
       grossSalary: gross,
       netSalary: net,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      businessTransactionId: txId
     };
 
     const newPayrolls = payEditId
       ? payrolls.map(x => x.id === payEditId ? pay : x)
       : [...payrolls, pay];
 
-    onUpdateData({ ...data, hrPayrolls: newPayrolls });
+    // Sync to Business Transactions
+    const businessTx = data.businessTransactions || [];
+    const txObj = {
+      id: txId,
+      type: 'expense' as const,
+      description: `Payroll - ${empName} (${payMonth})`,
+      amount: gross,
+      category: 'wages' as any,
+      date: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
+    };
+
+    const newBusinessTxs = existingTxId 
+      ? businessTx.map(t => t.id === existingTxId ? { ...t, amount: txObj.amount, description: txObj.description } : t)
+      : [...businessTx, txObj];
+
+    onUpdateData({ 
+      ...data, 
+      hrPayrolls: newPayrolls,
+      businessTransactions: newBusinessTxs 
+    });
     setIsPayModalOpen(false);
     resetPayForm();
   };
@@ -263,8 +295,19 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
   };
 
   const handleDeletePayroll = (id: string) => {
+    const pay = payrolls.find(p => p.id === id);
     if (confirm('Delete this payslip record?')) {
-      onUpdateData({ ...data, hrPayrolls: payrolls.filter(p => p.id !== id) });
+      const newPayrolls = payrolls.filter(p => p.id !== id);
+      const businessTx = data.businessTransactions || [];
+      const newBusinessTxs = pay?.businessTransactionId 
+        ? businessTx.filter(t => t.id !== pay.businessTransactionId)
+        : businessTx;
+
+      onUpdateData({ 
+        ...data, 
+        hrPayrolls: newPayrolls,
+        businessTransactions: newBusinessTxs
+      });
     }
   };
 
@@ -418,6 +461,120 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
     }
   };
 
+  const generateConsolidatedPayrollPDF = async (month: string) => {
+    const monthPayrolls = payrolls.filter(p => !month || p.month === month);
+    if (monthPayrolls.length === 0) {
+      alert(`No payroll records found for ${month || 'all time'}`);
+      return;
+    }
+
+    const pdf = new jsPDF('landscape');
+    let currentY = 20;
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(22);
+    pdf.setTextColor('#4f46e5');
+    pdf.text('CONSOLIDATED PAYROLL SUMMARY', 14, currentY);
+    
+    currentY += 12;
+    pdf.setFontSize(12);
+    pdf.setTextColor('#1e293b');
+    pdf.text(`${data.profile.companyName || 'Our Company'}`, 14, currentY);
+    
+    currentY += 6;
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor('#64748b');
+    pdf.text(`Payroll Period: ${month || 'All Time'}`, 14, currentY);
+    pdf.text(`Generated: ${formatDate(new Date().toISOString().split('T')[0])}`, 14, currentY + 6);
+    
+    currentY += 20;
+    
+    // Table Header
+    pdf.setFillColor('#f8fafc');
+    pdf.rect(14, currentY, 268, 12, 'F');
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor('#475569');
+    
+    pdf.text('EMPLOYEE', 18, currentY + 8);
+    pdf.text('BASIC', 90, currentY + 8, { align: 'right' });
+    pdf.text('EARNINGS', 130, currentY + 8, { align: 'right' });
+    pdf.text('GROSS', 170, currentY + 8, { align: 'right' });
+    pdf.text('DEDUCTIONS', 210, currentY + 8, { align: 'right' });
+    pdf.text('NET PAY', 260, currentY + 8, { align: 'right' });
+    
+    currentY += 20;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor('#1e293b');
+    
+    let totalBasic = 0, totalAdd = 0, totalGross = 0, totalDed = 0, totalNet = 0;
+
+    monthPayrolls.forEach((pay, index) => {
+      const emp = employees.find(e => e.id === pay.employeeId);
+      const name = emp ? emp.name : 'Unknown';
+      
+      const addEarning = pay.overtime + pay.bonus + pay.incentives + pay.otherEarnings;
+      const totalDeductions = pay.nassa + pay.paye + pay.aidsLevy;
+      
+      totalBasic += pay.basicSalary;
+      totalAdd += addEarning;
+      totalGross += pay.grossSalary;
+      totalDed += totalDeductions;
+      totalNet += pay.netSalary;
+      
+      if (currentY > 180) {
+        pdf.addPage('landscape');
+        currentY = 20;
+        
+        pdf.setFillColor('#f8fafc');
+        pdf.rect(14, currentY, 268, 12, 'F');
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor('#475569');
+        pdf.text('EMPLOYEE', 18, currentY + 8);
+        pdf.text('BASIC', 90, currentY + 8, { align: 'right' });
+        pdf.text('EARNINGS', 130, currentY + 8, { align: 'right' });
+        pdf.text('GROSS', 170, currentY + 8, { align: 'right' });
+        pdf.text('DEDUCTIONS', 210, currentY + 8, { align: 'right' });
+        pdf.text('NET PAY', 260, currentY + 8, { align: 'right' });
+        
+        currentY += 20;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor('#1e293b');
+      }
+
+      pdf.text(name.substring(0, 30), 18, currentY);
+      pdf.text(formatCurrency(pay.basicSalary, currency), 90, currentY, { align: 'right' });
+      pdf.text(formatCurrency(addEarning, currency), 130, currentY, { align: 'right' });
+      pdf.text(formatCurrency(pay.grossSalary, currency), 170, currentY, { align: 'right' });
+      pdf.text(formatCurrency(totalDeductions, currency), 210, currentY, { align: 'right' });
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(formatCurrency(pay.netSalary, currency), 260, currentY, { align: 'right' });
+      pdf.setFont('helvetica', 'normal');
+      
+      currentY += 10;
+    });
+
+    // Totals line
+    currentY += 5;
+    pdf.setDrawColor('#e2e8f0');
+    pdf.line(14, currentY, 282, currentY);
+    currentY += 10;
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('TOTALS:', 18, currentY);
+    pdf.text(formatCurrency(totalBasic, currency), 90, currentY, { align: 'right' });
+    pdf.text(formatCurrency(totalAdd, currency), 130, currentY, { align: 'right' });
+    pdf.text(formatCurrency(totalGross, currency), 170, currentY, { align: 'right' });
+    pdf.text(formatCurrency(totalDed, currency), 210, currentY, { align: 'right' });
+    pdf.setTextColor('#0f172a');
+    pdf.text(formatCurrency(totalNet, currency), 260, currentY, { align: 'right' });
+
+    pdf.save(`Consolidated_Payroll_${month || 'AllTime'}.pdf`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -528,22 +685,37 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
       {/* Payroll Module */}
       {activeTab === 'payroll' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <h4 className="font-bold text-slate-800 dark:text-slate-200">Payroll Records</h4>
-            <button 
-              onClick={() => { resetPayForm(); setIsPayModalOpen(true); }}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm relative overflow-hidden group"
-            >
-              <div className="absolute inset-0 w-8 h-full bg-white/20 skew-x-[-20deg] -translate-x-12 group-hover:animate-[shimmer_1.5s_infinite]" />
-              <Receipt size={16} /> Process Payslip
-            </button>
+            <div className="flex items-center gap-2">
+              <input 
+                type="month" 
+                value={payrollFilterMonth}
+                onChange={(e) => setPayrollFilterMonth(e.target.value)}
+                className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-white"
+              />
+              <button 
+                onClick={() => generateConsolidatedPayrollPDF(payrollFilterMonth)}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                title="Export Consolidated PDF"
+              >
+                <Download size={14} /> Export Summary
+              </button>
+              <button 
+                onClick={() => { resetPayForm(); setIsPayModalOpen(true); }}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm relative overflow-hidden group ml-1"
+              >
+                <div className="absolute inset-0 w-8 h-full bg-white/20 skew-x-[-20deg] -translate-x-12 group-hover:animate-[shimmer_1.5s_infinite]" />
+                <Receipt size={16} /> Process Payslip
+              </button>
+            </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-            {payrolls.length === 0 ? (
+            {payrolls.filter(p => !payrollFilterMonth || p.month === payrollFilterMonth).length === 0 ? (
               <div className="p-8 text-center text-slate-500">
                 <FileText className="mx-auto text-slate-300 dark:text-slate-700 mb-3" size={48} />
-                <p>No payroll records processed yet.</p>
+                <p>No payroll records found{payrollFilterMonth ? ` for ${payrollFilterMonth}` : ''}.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -559,7 +731,7 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {payrolls.map(p => {
+                    {payrolls.filter(p => !payrollFilterMonth || p.month === payrollFilterMonth).map(p => {
                       const emp = employees.find(e => e.id === p.employeeId);
                       const totalDeductions = p.nassa + p.paye + p.aidsLevy;
                       return (

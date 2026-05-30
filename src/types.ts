@@ -52,7 +52,7 @@ export type BusinessTransactionType = 'sale' | 'expense'; // "Money Earned" vs "
 // 2. Rent, Power & Bills (Keeping the lights on)
 // 3. Helping Hands (Staff, wages, contractors)
 // 4. Tools & Setup (Equipment, machinery, computers)
-export type BusinessExpenseCategory = 'stock' | 'bills' | 'helpers' | 'tools' | 'food' | 'transport' | 'other';
+export type BusinessExpenseCategory = 'stock' | 'bills' | 'helpers' | 'tools' | 'food' | 'transport' | 'wages' | 'other';
 
 export interface BusinessTransaction {
   id: string;
@@ -203,6 +203,7 @@ export interface HRPayroll {
   netSalary: number;
   
   createdAt: string;
+  businessTransactionId?: string;
 }
 
 // Outer application state containing both Personal and Business configurations
