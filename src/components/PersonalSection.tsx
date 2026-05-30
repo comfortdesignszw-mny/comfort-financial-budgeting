@@ -6,6 +6,14 @@ import {
   Plus, Calendar, Tag, Info, AlertTriangle, ChevronRight, X, Repeat,
   PieChart
 } from 'lucide-react';
+import { 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area, 
+  Tooltip, 
+  YAxis, 
+  XAxis 
+} from 'recharts';
 import { AppData, PersonalTransaction, PersonalBudget, PersonalExpenseCategory, CurrencyType } from '../types';
 import { formatCurrency, formatDate } from '../utils';
 
@@ -84,6 +92,26 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
   const totalSavingsAmount = accumulatedSavings + currentMonthSavings;
   const savingsTarget = data.profile.savingsTarget || 500;
   const savingsPercent = Math.min(100, (totalSavingsAmount / savingsTarget) * 100);
+
+  const savingsTrendData = React.useMemo(() => {
+    const history = data.profile.savingsHistory || [];
+    const chartData = [...history];
+
+    if (chartData.length === 0 && accumulatedSavings > 0) {
+       chartData.push({ date: 'Legacy', amount: accumulatedSavings });
+    }
+    
+    chartData.push({
+      date: 'Current',
+      amount: totalSavingsAmount
+    });
+    
+    if (chartData.length === 1) {
+       chartData.unshift({ date: 'Start', amount: 0 });
+    }
+
+    return chartData;
+  }, [data.profile.savingsHistory, accumulatedSavings, totalSavingsAmount]);
 
   // 1. Transaction Handlers
   const openAddTxModal = (type: 'income' | 'expense') => {
@@ -167,12 +195,15 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
 
     const currentAccumulated = data.profile.accumulatedSavings || 0;
     const updatedSavings = currentAccumulated - amountToDeduct;
+    const history = data.profile.savingsHistory || [];
+    const dateStr = new Date().toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
     onUpdateData({
       ...data,
       profile: {
         ...data.profile,
-        accumulatedSavings: updatedSavings
+        accumulatedSavings: updatedSavings,
+        savingsHistory: [...history, { date: dateStr, amount: updatedSavings }]
       }
     });
 
@@ -185,7 +216,8 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
       ...data,
       profile: {
         ...data.profile,
-        accumulatedSavings: 0
+        accumulatedSavings: 0,
+        savingsHistory: []
       },
       transactions: [] // reset transactions of the month to 0 as well
     });
@@ -196,11 +228,16 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
   const handleMonthlyReset = () => {
     if (confirm(`Are you sure you want to perform a monthly reset? This will save your current positive balance of ${formatCurrency(Math.max(0, currentBalance), currency)} to your persistent savings and empty all transaction logs to start the next month fresh.`)) {
       const savingsToAdd = Math.max(0, currentBalance);
+      const newAccumulated = (data.profile.accumulatedSavings || 0) + savingsToAdd;
+      const history = data.profile.savingsHistory || [];
+      const dateStr = new Date().toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+
       onUpdateData({
         ...data,
         profile: {
           ...data.profile,
-          accumulatedSavings: (data.profile.accumulatedSavings || 0) + savingsToAdd
+          accumulatedSavings: newAccumulated,
+          savingsHistory: [...history, { date: dateStr, amount: newAccumulated }]
         },
         transactions: []
       });
@@ -456,9 +493,29 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
                   <p className="text-xs text-slate-500 dark:text-slate-400">Secure persistent savings, log deducts, and reset monthly transaction ledger metrics</p>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Total Savings</span>
-                <div className="text-2xl font-black font-sans text-amber-600 dark:text-amber-400">{formatCurrency(totalSavingsAmount, currency)}</div>
+              <div className="w-full md:w-64 h-20 relative mt-4 md:mt-0 flex shrink-0 border-l border-amber-500/10 dark:border-amber-500/10 pl-0 md:pl-4">
+                <div className="absolute right-0 -top-1 md:-right-2 z-10 text-right pointer-events-none">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600/70 dark:text-amber-500/70 block mb-0.5 drop-shadow-sm bg-amber-50/50 dark:bg-amber-950/50 px-2 rounded-full inline-block backdrop-blur-sm">Growth Trend</span>
+                  <div className="text-xl font-black font-sans text-amber-600 dark:text-amber-400 drop-shadow-sm">{formatCurrency(totalSavingsAmount, currency)}</div>
+                </div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={savingsTrendData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorAmountSpark" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#d97706" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#d97706" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Tooltip 
+                      cursor={{ stroke: '#d97706', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      formatter={(value: number) => [formatCurrency(value, currency), 'Savings']}
+                      labelStyle={{ color: '#64748b', fontSize: '12px', fontWeight: 600 }}
+                      itemStyle={{ color: '#d97706', fontSize: '14px', fontWeight: 'bold' }}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid rgba(217, 119, 6, 0.2)', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Area type="monotone" dataKey="amount" stroke="#d97706" strokeWidth={2.5} fillOpacity={1} fill="url(#colorAmountSpark)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
