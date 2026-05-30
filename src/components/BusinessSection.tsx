@@ -3,7 +3,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Shield, HelpCircle, Flame, 
   Layers, Package, Building, Users, Trash2, Calendar, 
   Plus, DollarSign, PenTool, CheckSquare, Square, FileCheck, ArrowRight, Eye, Info, X,
-  FileSpreadsheet, FileText, Utensils, Car
+  FileSpreadsheet, FileText, Utensils, Car, Download, Share2, Edit2
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { 
@@ -130,6 +130,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
   // Products Inventory States
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [prodEditId, setProdEditId] = useState<string | null>(null);
   const [prodName, setProdName] = useState('');
   const [prodDesc, setProdDesc] = useState('');
   const [prodCat, setProdCat] = useState('');
@@ -138,14 +139,18 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
   // Customer Database States
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [custEditId, setCustEditId] = useState<string | null>(null);
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
   const [custCompany, setCustCompany] = useState('');
   const [custEmail, setCustEmail] = useState('');
   const [custAddress, setCustAddress] = useState('');
+  const [customerSortColumn, setCustomerSortColumn] = useState<'name' | 'company' | null>(null);
+  const [customerSortDirection, setCustomerSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Document (Quotation/Invoice) States
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+  const [docEditId, setDocEditId] = useState<string | null>(null);
   const [docType, setDocType] = useState<'quotation' | 'invoice'>('quotation');
   const [docCustomerId, setDocCustomerId] = useState('');
   const [docNumber, setDocNumber] = useState('');
@@ -414,18 +419,27 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     e.preventDefault();
     if (!prodName || !prodPrice) return;
     
-    const newProduct = {
-      id: `prod-${Date.now()}`,
-      name: prodName,
-      description: prodDesc,
-      category: prodCat,
-      price: parseFloat(prodPrice) || 0,
-      quantity: parseInt(prodQty, 10) || 0,
-      createdAt: new Date().toISOString()
-    };
+    if (prodEditId) {
+      const updatedProducts = productsInventory.map(p => 
+        p.id === prodEditId 
+          ? { ...p, name: prodName, description: prodDesc, category: prodCat, price: parseFloat(prodPrice) || 0, quantity: parseInt(prodQty, 10) || 0 }
+          : p
+      );
+      onUpdateData({ ...data, productsInventory: updatedProducts });
+    } else {
+      const newProduct = {
+        id: `prod-${Date.now()}`,
+        name: prodName,
+        description: prodDesc,
+        category: prodCat,
+        price: parseFloat(prodPrice) || 0,
+        quantity: parseInt(prodQty, 10) || 0,
+        createdAt: new Date().toISOString()
+      };
+      onUpdateData({ ...data, productsInventory: [newProduct, ...productsInventory] });
+    }
     
-    onUpdateData({ ...data, productsInventory: [newProduct, ...productsInventory] });
-    
+    setProdEditId(null);
     setProdName(''); setProdDesc(''); setProdCat(''); setProdPrice(''); setProdQty('');
     setIsProductModalOpen(false);
   };
@@ -436,22 +450,41 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     }
   };
 
+  const handleEditProduct = (p: any) => {
+    setProdEditId(p.id);
+    setProdName(p.name);
+    setProdDesc(p.description || '');
+    setProdCat(p.category || '');
+    setProdPrice(p.price.toString());
+    setProdQty(p.quantity.toString());
+    setIsProductModalOpen(true);
+  };
+
   const handleSaveCustomer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!custName) return;
     
-    const newCustomer = {
-      id: `cust-${Date.now()}`,
-      name: custName,
-      phone: custPhone,
-      company: custCompany,
-      email: custEmail,
-      address: custAddress,
-      createdAt: new Date().toISOString()
-    };
+    if (custEditId) {
+      const updatedCustomers = businessCustomers.map(c => 
+        c.id === custEditId 
+          ? { ...c, name: custName, phone: custPhone, company: custCompany, email: custEmail, address: custAddress }
+          : c
+      );
+      onUpdateData({ ...data, businessCustomers: updatedCustomers });
+    } else {
+      const newCustomer = {
+        id: `cust-${Date.now()}`,
+        name: custName,
+        phone: custPhone,
+        company: custCompany,
+        email: custEmail,
+        address: custAddress,
+        createdAt: new Date().toISOString()
+      };
+      onUpdateData({ ...data, businessCustomers: [newCustomer, ...businessCustomers] });
+    }
     
-    onUpdateData({ ...data, businessCustomers: [newCustomer, ...businessCustomers] });
-    
+    setCustEditId(null);
     setCustName(''); setCustPhone(''); setCustCompany(''); setCustEmail(''); setCustAddress('');
     setIsCustomerModalOpen(false);
   };
@@ -460,6 +493,16 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     if (confirm('Delete this customer?')) {
       onUpdateData({ ...data, businessCustomers: businessCustomers.filter(c => c.id !== id) });
     }
+  };
+
+  const handleEditCustomer = (c: any) => {
+    setCustEditId(c.id);
+    setCustName(c.name);
+    setCustPhone(c.phone || '');
+    setCustCompany(c.company || '');
+    setCustEmail(c.email || '');
+    setCustAddress(c.address || '');
+    setIsCustomerModalOpen(true);
   };
 
   const handleAddDocItem = () => {
@@ -516,29 +559,50 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     const tax = 0; // Keeping simple
     const total = subtotal + tax;
 
-    const newDoc = {
-      id: `doc-${Date.now()}`,
-      type: docType,
-      number: docNumber || `${docType === 'quotation' ? 'Q-' : 'INV-'}${Math.floor(Math.random() * 10000)}`,
-      customerId: targetCustomerId,
-      customerName: targetCustomerName,
-      items: docItems,
-      subtotal,
-      tax,
-      total,
-      date: docDate,
-      notes: docNotes,
-      createdAt: new Date().toISOString()
-    };
-    
-    onUpdateData({ ...data, businessDocuments: [newDoc, ...businessDocuments] });
+    if (docEditId) {
+      const updatedDocs = businessDocuments.map(d => 
+        d.id === docEditId
+          ? { ...d, customerId: targetCustomerId, customerName: targetCustomerName, items: docItems, subtotal, tax, total, date: docDate, notes: docNotes, number: docNumber || d.number }
+          : d
+      );
+      onUpdateData({ ...data, businessDocuments: updatedDocs });
+    } else {
+      const newDoc = {
+        id: `doc-${Date.now()}`,
+        type: docType,
+        number: docNumber || `${docType === 'quotation' ? 'Q-' : 'INV-'}${Math.floor(Math.random() * 10000)}`,
+        customerId: targetCustomerId,
+        customerName: targetCustomerName,
+        items: docItems,
+        subtotal,
+        tax,
+        total,
+        date: docDate,
+        notes: docNotes,
+        createdAt: new Date().toISOString()
+      };
+      
+      onUpdateData({ ...data, businessDocuments: [newDoc, ...businessDocuments] });
+    }
     
     // reset form
+    setDocEditId(null);
     setDocCustomerId(''); setDocNumber(''); setDocItems([]); setDocNotes('');
     setCustName(''); setCustPhone(''); setCustCompany(''); setCustEmail(''); setCustAddress('');
     setIsDocumentModalOpen(false);
   };
   
+  const handleEditDocument = (doc: any) => {
+    setDocEditId(doc.id);
+    setDocType(doc.type);
+    setDocCustomerId(doc.customerId);
+    setDocNumber(doc.number);
+    setDocDate(doc.date);
+    setDocItems(doc.items);
+    setDocNotes(doc.notes || '');
+    setIsDocumentModalOpen(true);
+  };
+
   const handleDeleteDocument = (id: string) => {
     if (confirm('Delete this document?')) {
       onUpdateData({ ...data, businessDocuments: businessDocuments.filter(d => d.id !== id) });
@@ -660,7 +724,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     document.body.removeChild(link);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async (action: 'download' | 'share' | 'view' = 'download') => {
     const [year, month] = reportMonth.split('-').map(Number);
     const listTx = businessTransactions.filter(t => {
       const d = new Date(t.date);
@@ -832,7 +896,244 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       });
     }
 
-    doc.save(`Comfort_Business_Report_${reportMonth}.pdf`);
+    const fileName = `Comfort_Business_Report_${reportMonth}.pdf`;
+    
+    if (action === 'download' || action === undefined) {
+      doc.save(fileName);
+    } else if (action === 'view') {
+      window.open(doc.output('bloburl'), '_blank');
+    } else if (action === 'share') {
+      if (navigator.share) {
+        try {
+          const blob = doc.output('blob');
+          const file = new File([blob], fileName, { type: 'application/pdf' });
+          await navigator.share({
+            files: [file],
+            title: `Business Monthly Report - ${reportMonth}`,
+            text: `Please find attached the business report for ${reportMonth}.`
+          });
+        } catch (err) {
+          console.error("Error sharing PDF:", err);
+        }
+      } else {
+        alert('Sharing is not supported on this device/browser. Downloading instead.');
+        doc.save(fileName);
+      }
+    }
+  };
+
+  const handleExportCustomerPDF = async (c: any, action: 'download' | 'share' | 'view') => {
+    const pdf = new jsPDF();
+    pdf.setFillColor(13, 148, 136);
+    pdf.rect(0, 0, 210, 30, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('CLIENT PROFILE', 14, 20);
+    
+    pdf.setTextColor(51, 65, 85);
+    pdf.setFontSize(16);
+    pdf.text(c.name, 14, 45);
+    
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(71, 85, 105);
+    let y = 55;
+    if (c.company) { pdf.text(`Company: ${c.company}`, 14, y); y += 8; }
+    if (c.email) { pdf.text(`Email: ${c.email}`, 14, y); y += 8; }
+    if (c.phone) { pdf.text(`Phone: ${c.phone}`, 14, y); y += 8; }
+    if (c.address) { 
+        pdf.text(`Address: ${c.address}`, 14, y); 
+        y += 8; 
+    }
+    
+    pdf.setFontSize(8);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('Generated via Comfort Budgeting / CashFlow Simple', 14, 280);
+
+    const fileName = `Customer_${c.name.replace(/ /g, '_')}.pdf`;
+    if (action === 'download') pdf.save(fileName);
+    else if (action === 'view') window.open(pdf.output('bloburl'), '_blank');
+    else if (action === 'share' && navigator.share) {
+      try {
+        const file = new File([pdf.output('blob')], fileName, { type: 'application/pdf' });
+        await navigator.share({ files: [file], title: `Customer ${c.name}` });
+      } catch (e) {}
+    } else if (action === 'share') {
+      pdf.save(fileName);
+    }
+  };
+
+  const handleExportProductPDF = async (p: any, action: 'download' | 'share' | 'view') => {
+    const pdf = new jsPDF();
+    pdf.setFillColor(13, 148, 136);
+    pdf.rect(0, 0, 210, 30, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('PRODUCT PORTFOLIO', 14, 20);
+    
+    pdf.setTextColor(51, 65, 85);
+    pdf.setFontSize(16);
+    pdf.text(p.name, 14, 45);
+    
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(71, 85, 105);
+    pdf.text(`Price: ${formatCurrency(p.price, currency)}`, 14, 55);
+    if (p.category) pdf.text(`Category: ${p.category}`, 14, 63);
+    pdf.text(`Quantity in Stock: ${p.quantity}`, 14, 71);
+    
+    if (p.description) {
+        pdf.text('Description:', 14, 85);
+        pdf.setFontSize(10);
+        const lines = pdf.splitTextToSize(p.description, 180);
+        pdf.text(lines, 14, 92);
+    }
+    
+    pdf.setFontSize(8);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('Generated via Comfort Budgeting / CashFlow Simple', 14, 280);
+
+    const fileName = `Product_${p.name.replace(/ /g, '_')}.pdf`;
+    if (action === 'download') pdf.save(fileName);
+    else if (action === 'view') window.open(pdf.output('bloburl'), '_blank');
+    else if (action === 'share' && navigator.share) {
+      try {
+        const file = new File([pdf.output('blob')], fileName, { type: 'application/pdf' });
+        await navigator.share({ files: [file], title: `Product ${p.name}` });
+      } catch (e) {}
+    } else if (action === 'share') {
+      pdf.save(fileName);
+    }
+  };
+
+  const handleExportDocPDF = async (docObj: any, action: 'download' | 'share' | 'view') => {
+    const pdf = new jsPDF();
+    
+    // Branding/Header
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(28);
+    pdf.setTextColor(docObj.type === 'invoice' ? '#059669' : '#4f46e5');
+    pdf.text((docObj.type === 'invoice' ? 'INVOICE' : 'QUOTATION'), 14, 24);
+    
+    pdf.setTextColor('#334155');
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Document #: ${docObj.number}`, 14, 34);
+    pdf.text(`Date Issued: ${formatDate(docObj.date)}`, 14, 40);
+    
+    pdf.setDrawColor('#e2e8f0');
+    pdf.line(14, 46, 196, 46);
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Billed To:', 14, 56);
+    pdf.setFont('helvetica', 'normal');
+    const customer = businessCustomers.find(c => c.id === docObj.customerId);
+    pdf.text(docObj.customerName || 'Unknown Client', 14, 62);
+    if (customer) {
+      if (customer.company) pdf.text(customer.company, 14, 68);
+      if (customer.email) pdf.text(`Email: ${customer.email}`, 14, 74);
+      if (customer.phone) pdf.text(`Phone: ${customer.phone}`, 14, 80);
+    }
+
+    let lastY = customer ? 94 : 74;
+    
+    // Table Header
+    pdf.setFillColor(docObj.type === 'invoice' ? 236 : 238, docObj.type === 'invoice' ? 253 : 242, docObj.type === 'invoice' ? 245 : 255);
+    pdf.rect(14, lastY, 182, 12, 'F');
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(docObj.type === 'invoice' ? '#065f46' : '#3730a3');
+    pdf.text('ITEM DESCRIPTION', 18, lastY + 8);
+    pdf.text('QTY', 120, lastY + 8);
+    pdf.text('PRICE', 144, lastY + 8);
+    pdf.text('AMOUNT', 170, lastY + 8);
+    
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor('#334155');
+    lastY += 20;
+    
+    docObj.items.forEach((item: any) => {
+      const lineTotal = item.quantity * item.price;
+      pdf.text(item.name.substring(0, 50), 18, lastY);
+      pdf.text(item.quantity.toString(), 120, lastY);
+      pdf.text(formatCurrency(item.price, currency).replace(currencySymbols[currency] || '$', ''), 144, lastY);
+      pdf.text(formatCurrency(lineTotal, currency).replace(currencySymbols[currency] || '$', ''), 170, lastY);
+      lastY += 10;
+    });
+    
+    lastY += 6;
+    pdf.setDrawColor('#e2e8f0');
+    pdf.line(14, lastY, 196, lastY);
+    lastY += 12;
+    
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('TOTAL AMOUNT DUE:', 110, lastY);
+    pdf.text(formatCurrency(docObj.total, currency), 170, lastY);
+    
+    if (docObj.notes) {
+        lastY += 30;
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(9);
+        pdf.setTextColor('#64748b');
+        const notesLines = pdf.splitTextToSize(docObj.notes, 180);
+        pdf.text(notesLines, 14, lastY);
+    }
+    
+    // Footer
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor('#94a3b8');
+    pdf.text('Generated via Comfort Budgeting / CashFlow Simple', 14, 280);
+
+    const fileName = `${docObj.type}_${docObj.number}.pdf`;
+    
+    if (action === 'download') {
+      pdf.save(fileName);
+    } else if (action === 'view') {
+      window.open(pdf.output('bloburl'), '_blank');
+    } else if (action === 'share') {
+      if (navigator.share) {
+        try {
+          const blob = pdf.output('blob');
+          const file = new File([blob], fileName, { type: 'application/pdf' });
+          await navigator.share({
+            files: [file],
+            title: `Business ${docObj.type.charAt(0).toUpperCase() + docObj.type.slice(1)}`,
+            text: `Please find attached the ${docObj.type} document.`
+          });
+        } catch (err) {
+          console.error("Error sharing PDF:", err);
+        }
+      } else {
+        alert('Sharing is not supported on this device/browser. Downloading instead.');
+        pdf.save(fileName);
+      }
+    }
+  };
+
+  const sortedBusinessCustomers = [...businessCustomers].sort((a, b) => {
+    if (!customerSortColumn) return 0;
+    
+    const aValue = a[customerSortColumn]?.toLowerCase() || '';
+    const bValue = b[customerSortColumn]?.toLowerCase() || '';
+    
+    if (customerSortDirection === 'asc') {
+      return aValue.localeCompare(bValue);
+    } else {
+      return bValue.localeCompare(aValue);
+    }
+  });
+
+  const handleCustomerSort = (column: 'name' | 'company') => {
+    if (customerSortColumn === column) {
+      setCustomerSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setCustomerSortColumn(column);
+      setCustomerSortDirection('asc');
+    }
   };
 
   return (
@@ -1415,9 +1716,17 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                         <div className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatCurrency(p.price, currency)}</div>
                         <div className="text-[10px] text-slate-400 font-medium">Stock/Qty: {p.quantity}</div>
                       </div>
-                      <button type="button" onClick={() => handleDeleteProduct(p.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition cursor-pointer">
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => handleEditProduct(p)} title="Edit Product" className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition cursor-pointer">
+                          <Edit2 size={14} />
+                        </button>
+                        <button type="button" onClick={() => handleExportProductPDF(p, 'share')} title="Share Info" className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition cursor-pointer">
+                          <Share2 size={14} />
+                        </button>
+                        <button type="button" onClick={() => handleDeleteProduct(p.id)} title="Delete Product" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition cursor-pointer">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1452,15 +1761,29 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     <tr>
-                      <th className="px-5 py-3">Client Name</th>
-                      <th className="px-5 py-3">Company</th>
+                      <th className="px-5 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition" onClick={() => handleCustomerSort('name')}>
+                        <div className="flex items-center gap-1">
+                          Client Name
+                          {customerSortColumn === 'name' && (
+                            customerSortDirection === 'asc' ? <ArrowUpCircle size={12} /> : <ArrowDownCircle size={12} />
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-5 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition" onClick={() => handleCustomerSort('company')}>
+                        <div className="flex items-center gap-1">
+                          Company
+                          {customerSortColumn === 'company' && (
+                            customerSortDirection === 'asc' ? <ArrowUpCircle size={12} /> : <ArrowDownCircle size={12} />
+                          )}
+                        </div>
+                      </th>
                       <th className="px-5 py-3">Contact Email & Phone</th>
                       <th className="px-5 py-3">Address</th>
                       <th className="px-5 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {businessCustomers.map(c => (
+                    {sortedBusinessCustomers.map(c => (
                       <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition">
                         <td className="px-5 py-4 font-bold text-slate-800 dark:text-slate-200">{c.name}</td>
                         <td className="px-5 py-4 text-xs font-medium">{c.company || '-'}</td>
@@ -1472,9 +1795,20 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                         </td>
                         <td className="px-5 py-4 text-xs max-w-[200px] truncate text-slate-500">{c.address || '-'}</td>
                         <td className="px-5 py-4 text-right">
-                          <button type="button" onClick={() => handleDeleteCustomer(c.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition cursor-pointer">
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button type="button" onClick={() => handleEditCustomer(c)} title="Edit Customer" className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-md transition cursor-pointer">
+                              <Edit2 size={16} />
+                            </button>
+                            <button type="button" onClick={() => handleExportCustomerPDF(c, 'download')} title="Download Profile" className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-md transition cursor-pointer">
+                              <Download size={16} />
+                            </button>
+                            <button type="button" onClick={() => handleExportCustomerPDF(c, 'share')} title="Share Profile" className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-md transition cursor-pointer">
+                              <Share2 size={16} />
+                            </button>
+                            <button type="button" onClick={() => handleDeleteCustomer(c.id)} title="Delete Customer" className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition cursor-pointer">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1544,96 +1878,41 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                       <div className="flex gap-2">
                         <button
                           type="button" 
-                          onClick={() => {
-                            const pdf = new jsPDF();
-                            
-                            // Branding/Header
-                            pdf.setFont('helvetica', 'bold');
-                            pdf.setFontSize(28);
-                            pdf.setTextColor(doc.type === 'invoice' ? '#059669' : '#4f46e5');
-                            pdf.text((doc.type === 'invoice' ? 'INVOICE' : 'QUOTATION'), 14, 24);
-                            
-                            pdf.setTextColor('#334155');
-                            pdf.setFontSize(10);
-                            pdf.setFont('helvetica', 'normal');
-                            pdf.text(`Document #: ${doc.number}`, 14, 34);
-                            pdf.text(`Date Issued: ${formatDate(doc.date)}`, 14, 40);
-                            
-                            pdf.setDrawColor('#e2e8f0');
-                            pdf.line(14, 46, 196, 46);
-
-                            pdf.setFont('helvetica', 'bold');
-                            pdf.text('Billed To:', 14, 56);
-                            pdf.setFont('helvetica', 'normal');
-                            const customer = businessCustomers.find(c => c.id === doc.customerId);
-                            pdf.text(doc.customerName || 'Unknown Client', 14, 62);
-                            if (customer) {
-                              if (customer.company) pdf.text(customer.company, 14, 68);
-                              if (customer.email) pdf.text(`Email: ${customer.email}`, 14, 74);
-                              if (customer.phone) pdf.text(`Phone: ${customer.phone}`, 14, 80);
-                            }
-
-                            let lastY = customer ? 94 : 74;
-                            
-                            // Table Header
-                            pdf.setFillColor(248, 250, 252);
-                            pdf.rect(14, lastY, 182, 12, 'F');
-                            pdf.setFontSize(9);
-                            pdf.setFont('helvetica', 'bold');
-                            pdf.setTextColor('#475569');
-                            pdf.text('ITEM DESCRIPTION', 18, lastY + 8);
-                            pdf.text('QTY', 120, lastY + 8);
-                            pdf.text('PRICE', 144, lastY + 8);
-                            pdf.text('AMOUNT', 170, lastY + 8);
-                            
-                            pdf.setFont('helvetica', 'normal');
-                            pdf.setTextColor('#334155');
-                            lastY += 20;
-                            
-                            doc.items.forEach(item => {
-                              const lineTotal = item.quantity * item.price;
-                              pdf.text(item.name.substring(0, 50), 18, lastY);
-                              pdf.text(item.quantity.toString(), 120, lastY);
-                              pdf.text(formatCurrency(item.price, currency).replace(currencySymbols[currency] || '$', ''), 144, lastY);
-                              pdf.text(formatCurrency(lineTotal, currency).replace(currencySymbols[currency] || '$', ''), 170, lastY);
-                              lastY += 10;
-                            });
-                            
-                            lastY += 6;
-                            pdf.setDrawColor('#e2e8f0');
-                            pdf.line(14, lastY, 196, lastY);
-                            lastY += 12;
-                            
-                            pdf.setFontSize(12);
-                            pdf.setFont('helvetica', 'bold');
-                            pdf.text('TOTAL AMOUNT DUE:', 110, lastY);
-                            pdf.text(formatCurrency(doc.total, currency), 170, lastY);
-                            
-                            if (doc.notes) {
-                                lastY += 30;
-                                pdf.setFont('helvetica', 'italic');
-                                pdf.setFontSize(9);
-                                pdf.setTextColor('#64748b');
-                                const notesLines = pdf.splitTextToSize(doc.notes, 180);
-                                pdf.text(notesLines, 14, lastY);
-                            }
-                            
-                            // Footer
-                            pdf.setFont('helvetica', 'normal');
-                            pdf.setFontSize(8);
-                            pdf.setTextColor('#94a3b8');
-                            pdf.text('Generated via Comfort Budgeting / CashFlow Simple - Thank you for your business!', 14, 280);
-
-                            pdf.save(`${doc.type}_${doc.number}.pdf`);
-                          }} 
-                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                          onClick={() => handleEditDocument(doc)}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                          title="Edit Document"
                         >
-                          <Download size={14} /> Download PDF
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          type="button" 
+                          onClick={() => handleExportDocPDF(doc, 'view')}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                          title="Preview PDF"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          type="button" 
+                          onClick={() => handleExportDocPDF(doc, 'download')}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                          title="Download PDF"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          type="button" 
+                          onClick={() => handleExportDocPDF(doc, 'share')}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                          title="Share PDF"
+                        >
+                          <Share2 size={14} />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteDocument(doc.id)} 
                           className="p-2 ml-1 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition cursor-pointer border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
+                          title="Delete Document"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1705,12 +1984,26 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                     <span>CSV Log</span>
                   </button>
                   <button
-                    onClick={handleExportPDF}
+                    onClick={() => handleExportPDF('view')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/45 dark:text-teal-400 dark:hover:bg-teal-950 text-teal-700 border border-teal-500/10 rounded-xl text-xs font-bold transition duration-200 cursor-pointer"
+                    title="View compiled PDF document Statement"
+                  >
+                    <Eye size={13.5} />
+                  </button>
+                  <button
+                    onClick={() => handleExportPDF('share')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/45 dark:text-teal-400 dark:hover:bg-teal-950 text-teal-700 border border-teal-500/10 rounded-xl text-xs font-bold transition duration-200 cursor-pointer"
+                    title="Share PDF Statement"
+                  >
+                    <Share2 size={13.5} />
+                  </button>
+                  <button
+                    onClick={() => handleExportPDF('download')}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition duration-200 cursor-pointer shadow-sm hover:shadow-md"
                     title="Download clean compiled PDF document Statement"
                   >
-                    <FileText size={13.5} />
-                    <span>PDF Statement</span>
+                    <Download size={13.5} />
+                    <span className="hidden sm:inline">PDF</span>
                   </button>
                 </div>
               </div>
@@ -1971,8 +2264,8 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 <input type="text" value={prodCat} onChange={e => setProdCat(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="e.g. Service, Hardware, etc." />
               </div>
               <div className="pt-4 flex justify-end gap-2">
-                <button type="button" onClick={() => setIsProductModalOpen(false)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm">Save Product</button>
+                <button type="button" onClick={() => { setIsProductModalOpen(false); setProdEditId(null); }} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm">{prodEditId ? 'Update' : 'Save'} Product</button>
               </div>
             </form>
           </div>
@@ -2013,8 +2306,8 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                 <textarea rows={2} value={custAddress} onChange={e => setCustAddress(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Client physical or postal address" />
               </div>
               <div className="pt-4 flex justify-end gap-2">
-                <button type="button" onClick={() => setIsCustomerModalOpen(false)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm">Save Client</button>
+                <button type="button" onClick={() => { setIsCustomerModalOpen(false); setCustEditId(null); }} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm">{custEditId ? 'Update' : 'Save'} Client</button>
               </div>
             </form>
           </div>
@@ -2142,8 +2435,8 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setIsDocumentModalOpen(false)} className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
-                <button type="submit" className={`px-5 py-2.5 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm ${docType === 'invoice' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>Generate {docType === 'invoice' ? 'Invoice' : 'Quotation'}</button>
+                <button type="button" onClick={() => { setIsDocumentModalOpen(false); setDocEditId(null); }} className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold font-sans cursor-pointer transition">Cancel</button>
+                <button type="submit" className={`px-5 py-2.5 text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition shadow-sm ${docType === 'invoice' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{docEditId ? 'Update' : 'Save'} {docType === 'invoice' ? 'Invoice' : 'Quotation'}</button>
               </div>
             </form>
           </div>

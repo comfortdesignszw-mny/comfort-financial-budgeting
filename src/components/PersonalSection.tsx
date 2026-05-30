@@ -3,7 +3,8 @@ import {
   TrendingDown, TrendingUp, Scale, PiggyBank, Briefcase, Laptop, 
   LineChart, Gift, Coins, Utensils, Car, Film, ShoppingBag, 
   FileText, Heart, GraduationCap, Ellipsis, Trash2, Edit2, 
-  Plus, Calendar, Tag, Info, AlertTriangle, ChevronRight, X, Repeat 
+  Plus, Calendar, Tag, Info, AlertTriangle, ChevronRight, X, Repeat,
+  PieChart
 } from 'lucide-react';
 import { AppData, PersonalTransaction, PersonalBudget, PersonalExpenseCategory, CurrencyType } from '../types';
 import { formatCurrency, formatDate } from '../utils';
@@ -315,45 +316,49 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
   return (
     <div className="space-y-6">
       {/* 2nd Tier Navigation */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`px-5 py-3 font-medium text-sm transition-all relative ${
-            activeTab === 'dashboard' 
-              ? 'text-teal-600 dark:text-teal-400 border-b-2 border-teal-500' 
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'dashboard'
+              ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
           }`}
         >
+          <PieChart size={20} className={activeTab === 'dashboard' ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'} />
           Overview Dashboard
         </button>
         <button
           onClick={() => setActiveTab('income')}
-          className={`px-5 py-3 font-medium text-sm transition-all relative ${
-            activeTab === 'income' 
-              ? 'text-teal-600 dark:text-teal-400 border-b-2 border-teal-500' 
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'income'
+              ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
           }`}
         >
+          <TrendingUp size={20} className={activeTab === 'income' ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'} />
           Income Streams
         </button>
         <button
           onClick={() => setActiveTab('expenses')}
-          className={`px-5 py-3 font-medium text-sm transition-all relative ${
-            activeTab === 'expenses' 
-              ? 'text-teal-600 dark:text-teal-400 border-b-2 border-teal-500' 
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'expenses'
+              ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
           }`}
         >
+          <TrendingDown size={20} className={activeTab === 'expenses' ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'} />
           Expense Tracking
         </button>
         <button
           onClick={() => setActiveTab('budgets')}
-          className={`px-5 py-3 font-medium text-sm transition-all relative ${
-            activeTab === 'budgets' 
-              ? 'text-teal-600 dark:text-teal-400 border-b-2 border-teal-500' 
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'budgets'
+              ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
           }`}
         >
+          <Scale size={20} className={activeTab === 'budgets' ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'} />
           Budget Planning
         </button>
       </div>
