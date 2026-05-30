@@ -113,8 +113,24 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
     pdf.setTextColor('#4f46e5');
     pdf.text('EMPLOYEE PROFILE', 14, currentY);
     
+    // Organization info at top right
+    const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
+    pdf.setFontSize(10);
+    pdf.setTextColor('#0f172a');
+    pdf.text(compName.toUpperCase(), 196, currentY, { align: 'right' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor('#64748b');
+    if (data.profile.companyEmail) {
+      pdf.text(data.profile.companyEmail, 196, currentY + 5, { align: 'right' });
+    }
+    if (data.profile.companyPhone) {
+      pdf.text(data.profile.companyPhone, 196, currentY + 10, { align: 'right' });
+    }
+    
     currentY += 15;
     pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
     pdf.setTextColor('#1e293b');
     pdf.text(emp.name, 14, currentY);
     
@@ -319,15 +335,32 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
     const pdf = new jsPDF();
     let currentY = 20;
 
+    // Header / Branding
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(24);
     pdf.setTextColor('#4f46e5');
     pdf.text('PAYSLIP', 14, currentY);
     
+    // Organization info at top right
+    const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
+    pdf.setFontSize(12);
+    pdf.setTextColor('#0f172a');
+    pdf.text(compName.toUpperCase(), 196, currentY, { align: 'right' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor('#64748b');
+    if (data.profile.companyEmail) {
+      pdf.text(data.profile.companyEmail, 196, currentY + 6, { align: 'right' });
+    }
+    if (data.profile.companyPhone) {
+      pdf.text(data.profile.companyPhone, 196, currentY + 12, { align: 'right' });
+    }
+    
     currentY += 15;
     pdf.setFontSize(12);
     pdf.setTextColor('#1e293b');
-    pdf.text(`${data.profile.companyName || 'Our Company'}`, 14, currentY);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(compName, 14, currentY);
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor('#64748b');
@@ -476,10 +509,26 @@ export default function HRSection({ data, onUpdateData, currency }: Props) {
     pdf.setTextColor('#4f46e5');
     pdf.text('CONSOLIDATED PAYROLL SUMMARY', 14, currentY);
     
+    // Organization info at top right
+    const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
+    pdf.setFontSize(12);
+    pdf.setTextColor('#0f172a');
+    pdf.text(compName.toUpperCase(), 283, currentY, { align: 'right' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor('#64748b');
+    if (data.profile.companyEmail) {
+      pdf.text(data.profile.companyEmail, 283, currentY + 6, { align: 'right' });
+    }
+    if (data.profile.companyPhone) {
+      pdf.text(data.profile.companyPhone, 283, currentY + 12, { align: 'right' });
+    }
+    
     currentY += 12;
     pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
     pdf.setTextColor('#1e293b');
-    pdf.text(`${data.profile.companyName || 'Our Company'}`, 14, currentY);
+    pdf.text(compName, 14, currentY);
     
     currentY += 6;
     pdf.setFontSize(10);

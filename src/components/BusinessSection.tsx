@@ -938,8 +938,18 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     pdf.setFont('helvetica', 'bold');
     pdf.text('CLIENT PROFILE', 14, 20);
     
+    // Organization info at top right
+    const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
+    pdf.setFontSize(10);
+    pdf.text(compName.toUpperCase(), 196, 12, { align: 'right' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    if (data.profile.companyEmail) pdf.text(data.profile.companyEmail, 196, 17, { align: 'right' });
+    if (data.profile.companyPhone) pdf.text(data.profile.companyPhone, 196, 22, { align: 'right' });
+    
     pdf.setTextColor(51, 65, 85);
     pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
     pdf.text(c.name, 14, 45);
     
     pdf.setFontSize(11);
@@ -980,8 +990,18 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     pdf.setFont('helvetica', 'bold');
     pdf.text('PRODUCT PORTFOLIO', 14, 20);
     
+    // Organization info at top right
+    const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
+    pdf.setFontSize(10);
+    pdf.text(compName.toUpperCase(), 196, 12, { align: 'right' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    if (data.profile.companyEmail) pdf.text(data.profile.companyEmail, 196, 17, { align: 'right' });
+    if (data.profile.companyPhone) pdf.text(data.profile.companyPhone, 196, 22, { align: 'right' });
+    
     pdf.setTextColor(51, 65, 85);
     pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
     pdf.text(p.name, 14, 45);
     
     pdf.setFontSize(12);
@@ -1018,11 +1038,31 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const handleExportDocPDF = async (docObj: any, action: 'download' | 'share' | 'view') => {
     const pdf = new jsPDF();
     
+    // Formatting variables
+    const rightMargin = 196;
+    
     // Branding/Header
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(28);
     pdf.setTextColor(docObj.type === 'invoice' ? '#059669' : '#4f46e5');
     pdf.text((docObj.type === 'invoice' ? 'INVOICE' : 'QUOTATION'), 14, 24);
+    
+    // Company Branding on the top right
+    pdf.setTextColor('#0f172a');
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
+    pdf.text(compName, rightMargin, 20, { align: 'right' });
+    
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor('#64748b');
+    if (data.profile.companyEmail) {
+      pdf.text(data.profile.companyEmail, rightMargin, 26, { align: 'right' });
+    }
+    if (data.profile.companyPhone) {
+      pdf.text(data.profile.companyPhone, rightMargin, 32, { align: 'right' });
+    }
     
     pdf.setTextColor('#334155');
     pdf.setFontSize(10);
