@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getPinHash, hashPin } from '../utils/crypto';
+import { getPinHash, hashPin, savePinHash } from '../utils/crypto';
 import AppLockScreen from './AppLockScreen';
 
 interface AppLockContextType {
@@ -8,6 +8,7 @@ interface AppLockContextType {
   unlock: (pin: string) => Promise<boolean>;
   lock: () => void;
   refreshConfig: () => void;
+  resetPin: (pin: string) => Promise<void>;
 }
 
 const AppLockContext = createContext<AppLockContextType | undefined>(undefined);
@@ -25,6 +26,19 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && isConfigured) {
+        setIsLocked(true);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isConfigured]);
 
   const refreshConfig = () => {
     const hash = getPinHash();
@@ -54,11 +68,18 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resetPin = async (newPin: string) => {
+    const hash = await hashPin(newPin);
+    savePinHash(hash);
+    setIsConfigured(true);
+    setIsLocked(false);
+  };
+
   if (loading) return null;
 
   return (
-    <AppLockContext.Provider value={{ isLocked, isConfigured, unlock, lock, refreshConfig }}>
-      {isLocked ? <AppLockScreen onUnlock={unlock} /> : children}
+    <AppLockContext.Provider value={{ isLocked, isConfigured, unlock, lock, refreshConfig, resetPin }}>
+      {isLocked ? <AppLockScreen onUnlock={unlock} onResetPin={resetPin} /> : children}
     </AppLockContext.Provider>
   );
 }
@@ -70,3 +91,4 @@ export function useAppLock() {
   }
   return context;
 }
+
