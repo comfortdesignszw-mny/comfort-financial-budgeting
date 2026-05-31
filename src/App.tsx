@@ -424,19 +424,54 @@ export default function App() {
   };
   
   // 1. Export Data Backup
-  const handleExportDataBackup = () => {
+  const handleExportDataBackup = async () => {
     try {
       const dataString = JSON.stringify(data, null, 2);
+      const compName = data.profile.companyName ? data.profile.companyName.replace(/\s+/g, '_') : 'MyBusiness';
+      const fileName = `${compName}_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      
+      const file = new File([dataString], fileName, { type: 'application/json' });
+
+      // Robust Share API for PWAs and Native WebViews
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `${compName} Backup`,
+            text: 'Comfort Financial Budgeting Backup File',
+          });
+          setNotification({
+            title: 'Backup Created Successfully',
+            message: 'Your robust JSON data archive file was generated securely. Store it safely to restore your records seamlessly!',
+            type: 'success'
+          });
+          return; // Exit if share succeeds
+        } catch (error: any) {
+          // If the user aborts, or share fails, fallback to traditional download
+          if (error.name !== 'AbortError') {
+            console.error('Share API failed, falling back to blob.', error);
+          } else {
+            return; // User cancelled share
+          }
+        }
+      }
+
+      // Traditional Blob Download Fallback
       const blob = new Blob([dataString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const compName = data.profile.companyName ? data.profile.companyName.replace(/\s+/g, '_') : 'MyBusiness';
       a.href = url;
-      a.download = `${compName}_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = fileName;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 150);
+      
       setNotification({
         title: 'Backup Created Successfully',
         message: 'Your robust JSON data archive file was generated and downloaded. Store it safely to restore your records seamlessly!',
@@ -452,64 +487,62 @@ export default function App() {
   };
 
   // 2. Import Data Backup
-  const handleImportDataBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportDataBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const imported = JSON.parse(event.target?.result as string);
-        if (imported && imported.profile) {
-          // Hydrate data ensuring all array structures exist even from older backup versions
-          const hydratedData: AppData = {
-            profile: imported.profile,
-            transactions: Array.isArray(imported.transactions) ? imported.transactions : [],
-            budgets: Array.isArray(imported.budgets) ? imported.budgets : [],
-            businessInvestments: Array.isArray(imported.businessInvestments) ? imported.businessInvestments : [],
-            businessTransactions: Array.isArray(imported.businessTransactions) ? imported.businessTransactions : [],
-            businessOweItems: Array.isArray(imported.businessOweItems) ? imported.businessOweItems : [],
-            businessAssets: Array.isArray(imported.businessAssets) ? imported.businessAssets : [],
-            currentStockProducts: Array.isArray(imported.currentStockProducts) ? imported.currentStockProducts : [],
-            businessStockData: Array.isArray(imported.businessStockData) ? imported.businessStockData : [],
-            businessPropertyData: Array.isArray(imported.businessPropertyData) ? imported.businessPropertyData : [],
-            productsInventory: Array.isArray(imported.productsInventory) ? imported.productsInventory : [],
-            businessCustomers: Array.isArray(imported.businessCustomers) ? imported.businessCustomers : [],
-            businessDocuments: Array.isArray(imported.businessDocuments) ? imported.businessDocuments : [],
-            hrEmployees: Array.isArray(imported.hrEmployees) ? imported.hrEmployees : [],
-            hrPayrolls: Array.isArray(imported.hrPayrolls) ? imported.hrPayrolls : [],
-            notes: Array.isArray(imported.notes) ? imported.notes : [],
-            events: Array.isArray(imported.events) ? imported.events : []
-          };
-          setData(hydratedData);
-          setNotification({
-            title: 'Database Restored Successfully',
-            message: 'All personal transactions, budgets, cashflows, and corporate profiles have been successfully loaded and updated.',
-            type: 'success',
-            details: [
-              { label: 'Imported User', value: hydratedData.profile.name || 'User' },
-              { label: 'Imported Company', value: hydratedData.profile.companyName || 'None' },
-              { label: 'Source Backup Currency', value: hydratedData.profile.currency || 'USD' },
-              { label: 'Total Business Docs', value: String(hydratedData.businessDocuments?.length || 0) }
-            ]
-          });
-        } else {
-          setNotification({
-            title: 'Invalid Backup File',
-            message: 'The structure of the JSON file uploaded is invalid or incompatible with the application schema.',
-            type: 'error'
-          });
-        }
-      } catch (err) {
+    try {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+      if (imported && imported.profile) {
+        // Hydrate data ensuring all array structures exist even from older backup versions
+        const hydratedData: AppData = {
+          profile: imported.profile,
+          transactions: Array.isArray(imported.transactions) ? imported.transactions : [],
+          budgets: Array.isArray(imported.budgets) ? imported.budgets : [],
+          businessInvestments: Array.isArray(imported.businessInvestments) ? imported.businessInvestments : [],
+          businessTransactions: Array.isArray(imported.businessTransactions) ? imported.businessTransactions : [],
+          businessOweItems: Array.isArray(imported.businessOweItems) ? imported.businessOweItems : [],
+          businessAssets: Array.isArray(imported.businessAssets) ? imported.businessAssets : [],
+          currentStockProducts: Array.isArray(imported.currentStockProducts) ? imported.currentStockProducts : [],
+          businessStockData: Array.isArray(imported.businessStockData) ? imported.businessStockData : [],
+          businessPropertyData: Array.isArray(imported.businessPropertyData) ? imported.businessPropertyData : [],
+          productsInventory: Array.isArray(imported.productsInventory) ? imported.productsInventory : [],
+          businessCustomers: Array.isArray(imported.businessCustomers) ? imported.businessCustomers : [],
+          businessDocuments: Array.isArray(imported.businessDocuments) ? imported.businessDocuments : [],
+          hrEmployees: Array.isArray(imported.hrEmployees) ? imported.hrEmployees : [],
+          hrPayrolls: Array.isArray(imported.hrPayrolls) ? imported.hrPayrolls : [],
+          notes: Array.isArray(imported.notes) ? imported.notes : [],
+          events: Array.isArray(imported.events) ? imported.events : []
+        };
+        setData(hydratedData);
         setNotification({
-          title: 'Import Error',
-          message: 'Could not parse the selected file. Please make sure you are selecting a valid backup file (.json).',
+          title: 'Database Restored Successfully',
+          message: 'All personal transactions, budgets, cashflows, and corporate profiles have been successfully loaded and updated.',
+          type: 'success',
+          details: [
+            { label: 'Imported User', value: hydratedData.profile.name || 'User' },
+            { label: 'Imported Company', value: hydratedData.profile.companyName || 'None' },
+            { label: 'Source Backup Currency', value: hydratedData.profile.currency || 'USD' },
+            { label: 'Total Business Docs', value: String(hydratedData.businessDocuments?.length || 0) }
+          ]
+        });
+      } else {
+        setNotification({
+          title: 'Invalid Backup File',
+          message: 'The structure of the JSON file uploaded is invalid or incompatible with the application schema.',
           type: 'error'
         });
       }
-    };
-    reader.readAsText(file);
-    e.target.value = ''; // clear input
+    } catch (err) {
+      setNotification({
+        title: 'Import Error',
+        message: 'Could not parse the selected file. Please make sure you are selecting a valid backup file (.json).',
+        type: 'error'
+      });
+    } finally {
+      e.target.value = ''; // clear input
+    }
   };
 
   // 3. Complete Reset Database
