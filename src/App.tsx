@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
 import { initialSampleData } from './sampleData';
 import { formatCurrency, currencySymbols } from './utils';
+import { useAppLock } from './components/AppLockContext';
+import { hashPin, savePinHash, removePinHash, getPinHash } from './utils/crypto';
 import PersonalSection from './components/PersonalSection';
 import BusinessSection from './components/BusinessSection';
 import HRSection from './components/HRSection';
@@ -20,6 +22,16 @@ import SchedulerSection from './components/SchedulerSection';
 import comfortLogo from './assets/images/comfort_logo_brand_1779617398401.png';
 
 export default function App() {
+  const { isConfigured, refreshConfig, lock } = useAppLock();
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [pinStep, setPinStep] = useState<'create'|'confirm'>('create');
+  const [pinError, setPinError] = useState('');
+  
+  const [showPinDisable, setShowPinDisable] = useState(false);
+  const [disablePinInput, setDisablePinInput] = useState('');
+
   const [data, setData] = useState<AppData>(() => {
     try {
       const stored = localStorage.getItem('comfortBudgetingData');
@@ -357,6 +369,60 @@ export default function App() {
     });
   };
 
+  // --- App Lock Handlers ---
+  const handlePinSubmit = async () => {
+    if (pinStep === 'create') {
+      if (pinInput.length !== 4) {
+        setPinError('PIN must be 4 digits.');
+        return;
+      }
+      setPinStep('confirm');
+      setPinError('');
+    } else {
+      if (pinInput !== pinConfirm) {
+        setPinError('PINs do not match. Try again.');
+        setPinInput('');
+        setPinConfirm('');
+        setPinStep('create');
+        return;
+      }
+      // Save PIN
+      const hash = await hashPin(pinInput);
+      savePinHash(hash);
+      refreshConfig();
+      setShowPinSetup(false);
+      
+      setNotification({
+        title: 'App Lock Enabled',
+        message: 'Your 4-digit PIN has been set and the app is now secured.',
+        type: 'success'
+      });
+      // reset states
+      setPinInput(''); setPinConfirm(''); setPinStep('create'); setPinError('');
+    }
+  };
+
+  const handleDisablePinSubmit = async () => {
+    const hash = getPinHash();
+    if (!hash) return;
+    
+    const inputHash = await hashPin(disablePinInput);
+    if (inputHash === hash) {
+      removePinHash();
+      refreshConfig();
+      setShowPinDisable(false);
+      setDisablePinInput('');
+      setNotification({
+        title: 'App Lock Disabled',
+        message: 'Your App Lock has been securely removed.',
+        type: 'info'
+      });
+    } else {
+      setPinError('Incorrect PIN.');
+      setDisablePinInput('');
+    }
+  };
+  
   // 1. Export Data Backup
   const handleExportDataBackup = () => {
     try {
@@ -364,15 +430,16 @@ export default function App() {
       const blob = new Blob([dataString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
+      const compName = data.profile.companyName ? data.profile.companyName.replace(/\s+/g, '_') : 'MyBusiness';
       a.href = url;
-      a.download = `comfort-financial-budgeting-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `${compName}_Backup_${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setNotification({
         title: 'Backup Created Successfully',
-        message: 'Your local database archive file (.json) was generated and downloaded. Store it safely to restore your records anytime!',
+        message: 'Your robust JSON data archive file was generated and downloaded. Store it safely to restore your records seamlessly!',
         type: 'success'
       });
     } catch (e) {
@@ -393,22 +460,43 @@ export default function App() {
     reader.onload = (event) => {
       try {
         const imported = JSON.parse(event.target?.result as string);
-        if (imported && imported.profile && imported.transactions) {
-          setData(imported);
+        if (imported && imported.profile) {
+          // Hydrate data ensuring all array structures exist even from older backup versions
+          const hydratedData: AppData = {
+            profile: imported.profile,
+            transactions: Array.isArray(imported.transactions) ? imported.transactions : [],
+            budgets: Array.isArray(imported.budgets) ? imported.budgets : [],
+            businessInvestments: Array.isArray(imported.businessInvestments) ? imported.businessInvestments : [],
+            businessTransactions: Array.isArray(imported.businessTransactions) ? imported.businessTransactions : [],
+            businessOweItems: Array.isArray(imported.businessOweItems) ? imported.businessOweItems : [],
+            businessAssets: Array.isArray(imported.businessAssets) ? imported.businessAssets : [],
+            currentStockProducts: Array.isArray(imported.currentStockProducts) ? imported.currentStockProducts : [],
+            businessStockData: Array.isArray(imported.businessStockData) ? imported.businessStockData : [],
+            businessPropertyData: Array.isArray(imported.businessPropertyData) ? imported.businessPropertyData : [],
+            productsInventory: Array.isArray(imported.productsInventory) ? imported.productsInventory : [],
+            businessCustomers: Array.isArray(imported.businessCustomers) ? imported.businessCustomers : [],
+            businessDocuments: Array.isArray(imported.businessDocuments) ? imported.businessDocuments : [],
+            hrEmployees: Array.isArray(imported.hrEmployees) ? imported.hrEmployees : [],
+            hrPayrolls: Array.isArray(imported.hrPayrolls) ? imported.hrPayrolls : [],
+            notes: Array.isArray(imported.notes) ? imported.notes : [],
+            events: Array.isArray(imported.events) ? imported.events : []
+          };
+          setData(hydratedData);
           setNotification({
             title: 'Database Restored Successfully',
             message: 'All personal transactions, budgets, cashflows, and corporate profiles have been successfully loaded and updated.',
             type: 'success',
             details: [
-              { label: 'Imported User', value: imported.profile.name || 'User' },
-              { label: 'Imported Company', value: imported.profile.companyName || 'None' },
-              { label: 'Source Backup Currency', value: imported.profile.currency || 'USD' }
+              { label: 'Imported User', value: hydratedData.profile.name || 'User' },
+              { label: 'Imported Company', value: hydratedData.profile.companyName || 'None' },
+              { label: 'Source Backup Currency', value: hydratedData.profile.currency || 'USD' },
+              { label: 'Total Business Docs', value: String(hydratedData.businessDocuments?.length || 0) }
             ]
           });
         } else {
           setNotification({
             title: 'Invalid Backup File',
-            message: 'The structure of the JSON file uploaded is invalid or incompatible with the Comfort Budgeting schema.',
+            message: 'The structure of the JSON file uploaded is invalid or incompatible with the application schema.',
             type: 'error'
           });
         }
@@ -426,37 +514,41 @@ export default function App() {
 
   // 3. Complete Reset Database
   const handleResetDatabase = () => {
+    // Preserve Piggy Bank Savings by rolling current month balance into accumulated savings
+    const totalIncome = data.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = data.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const currentMonthBalance = totalIncome - totalExpenses;
+    const currentMonthSavings = Math.max(0, currentMonthBalance);
+    const newAccumulatedSavings = (data.profile.accumulatedSavings || 0) + currentMonthSavings;
+
     const freshData: AppData = {
       profile: {
-        name: 'Comfort User',
-        email: '',
-        currency: 'USD',
-        savingsTarget: 1000,
-        savingsGoal: 'Savings Goal',
-        createdAt: new Date().toISOString(),
-        companyName: '',
-        companyPhone: '',
-        companyEmail: ''
+        ...data.profile,
+        accumulatedSavings: newAccumulatedSavings
       },
       transactions: [],
       budgets: [],
-      businessInvestments: [],
+      businessInvestments: data.businessInvestments || [],
       businessTransactions: [],
       businessOweItems: [],
-      businessAssets: [],
-      currentStockProducts: [],
-      productsInventory: [],
-      businessCustomers: [],
+      businessAssets: data.businessAssets || [],
+      currentStockProducts: data.currentStockProducts || [],
+      businessStockData: data.businessStockData || [],
+      businessPropertyData: data.businessPropertyData || [],
+      productsInventory: data.productsInventory || [],
+      businessCustomers: data.businessCustomers || [],
       businessDocuments: [],
-      notes: [],
-      events: []
+      hrEmployees: data.hrEmployees || [],
+      hrPayrolls: [],
+      notes: data.notes || [],
+      events: data.events || []
     };
     setData(freshData);
     setDataSpace('personal');
     setShowResetConfirm(false);
     setNotification({
-      title: 'Database Purged',
-      message: 'Safety wipe was fully executed. Your browser database and corporate profile settings are now reset back to factory defaults.',
+      title: 'Database Purged Successfully',
+      message: 'Safety wipe executed. All transactions and budgets cleared while preserving your inventories, profiles, property, and piggy bank savings for rollover.',
       type: 'info'
     });
   };
@@ -1026,6 +1118,136 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Security & Privacy Panel */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="p-1 px-2 bg-indigo-100 dark:bg-indigo-950/45 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold uppercase rounded-md tracking-wider">
+                        Security Constraints
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">App Lock PIN</h4>
+                    <p className="text-xs text-slate-400">Add an additional layer of security. Require a 4-digit PIN every time the app opens.</p>
+
+                    <div className="pt-4 flex flex-col gap-3">
+                      {isConfigured ? (
+                        <>
+                          <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl">
+                            <ShieldCheck size={18} className="text-emerald-500" />
+                            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex-1">App Lock is Active</span>
+                          </div>
+                          
+                          <button
+                            onClick={() => setShowPinDisable(true)}
+                            className="w-full py-2.5 px-4 bg-slate-100 text-slate-700 border border-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition"
+                          >
+                            Disable App Lock
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => { setShowPinSetup(true); setPinStep('create'); setPinInput(''); setPinError(''); setPinConfirm(''); }}
+                          className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
+                        >
+                          Enable App Lock
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* Setup PIN Modal */}
+          {showPinSetup && (
+            <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-[9999] backdrop-blur-sm overflow-y-auto">
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-sm w-full overflow-hidden shadow-xl animate-in fade-in zoom-in duration-200 my-auto p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
+                    {pinStep === 'create' ? 'Create PIN' : 'Confirm PIN'}
+                  </h3>
+                  <button type="button" onClick={() => setShowPinSetup(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium">
+                  {pinStep === 'create' 
+                    ? 'Enter a 4-digit PIN to secure your app.' 
+                    : 'Re-enter your 4-digit PIN to confirm.'}
+                </p>
+
+                <div className="space-y-6">
+                  {pinError && <p className="text-xs font-bold text-red-500 text-center">{pinError}</p>}
+                  
+                  <div className="flex justify-center mb-4">
+                     <input
+                        type="password"
+                        maxLength={4}
+                        pattern="\d*"
+                        inputMode="numeric"
+                        autoFocus
+                        value={pinStep === 'create' ? pinInput : pinConfirm}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          if (pinStep === 'create') setPinInput(val);
+                          else setPinConfirm(val);
+                        }}
+                        className="text-center tracking-[1em] text-2xl font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[200px]"
+                        placeholder="••••"
+                      />
+                  </div>
+
+                  <button
+                    onClick={handlePinSubmit}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm text-sm transition"
+                  >
+                    {pinStep === 'create' ? 'Continue' : 'Save PIN'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Disable PIN Modal */}
+          {showPinDisable && (
+            <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-[9999] backdrop-blur-sm overflow-y-auto">
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-sm w-full overflow-hidden shadow-xl animate-in fade-in zoom-in duration-200 my-auto p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Disable App Lock</h3>
+                  <button type="button" onClick={() => setShowPinDisable(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium">Enter your current 4-digit PIN to disable app lock.</p>
+
+                <div className="space-y-6">
+                  {pinError && <p className="text-xs font-bold text-red-500 text-center">{pinError}</p>}
+                  
+                  <div className="flex justify-center mb-4">
+                     <input
+                        type="password"
+                        maxLength={4}
+                        pattern="\d*"
+                        inputMode="numeric"
+                        autoFocus
+                        value={disablePinInput}
+                        onChange={(e) => setDisablePinInput(e.target.value.replace(/\D/g, ''))}
+                        className="text-center tracking-[1em] text-2xl font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 w-full focus:outline-none focus:ring-2 focus:ring-slate-500 max-w-[200px]"
+                        placeholder="••••"
+                      />
+                  </div>
+
+                  <button
+                    onClick={handleDisablePinSubmit}
+                    className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-sm text-sm transition"
+                  >
+                    Disable PIN
+                  </button>
+                </div>
               </div>
             </div>
           )}

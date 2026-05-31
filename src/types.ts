@@ -164,6 +164,7 @@ export interface BusinessDocument {
   date: string;
   dueDate?: string;
   notes?: string;
+  status?: 'pending' | 'processed';
   createdAt: string;
 }
 
@@ -206,6 +207,26 @@ export interface HRPayroll {
   businessTransactionId?: string;
 }
 
+export interface BusinessStockItem {
+  id: string;
+  type: 'product' | 'service';
+  name: string;
+  quantity?: number;
+  unitValue?: number;
+  totalValue: number;
+  lifecycle?: string;
+  dateLogged: string;
+}
+
+export interface BusinessProperty {
+  id: string;
+  name: string;
+  location: string;
+  condition: 'new' | 'used' | 'old';
+  estimatedValue: number;
+  dateLogged: string;
+}
+
 // Outer application state containing both Personal and Business configurations
 export interface AppData {
   profile: ProfileState;
@@ -218,6 +239,10 @@ export interface AppData {
   businessOweItems: OweItem[];
   businessAssets?: BusinessAsset[];
   currentStockProducts?: StockProduct[];
+  
+  businessStockData?: BusinessStockItem[];
+  businessPropertyData?: BusinessProperty[];
+
   productsInventory?: BusinessProduct[];
   businessCustomers?: BusinessCustomer[];
   businessDocuments?: BusinessDocument[];

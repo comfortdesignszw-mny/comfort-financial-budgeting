@@ -3,7 +3,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Shield, HelpCircle, Flame, 
   Layers, Package, Building, Users, Trash2, Calendar, 
   Plus, DollarSign, PenTool, CheckSquare, Square, FileCheck, ArrowRight, Eye, Info, X,
-  FileSpreadsheet, FileText, Utensils, Car, Download, Share2, Edit2
+  FileSpreadsheet, FileText, Utensils, Car, Download, Share2, Edit2, Warehouse
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { 
@@ -15,7 +15,7 @@ import {
   CartesianGrid, 
   Tooltip 
 } from 'recharts';
-import { AppData, BusinessTransaction, BusinessInvestment, OweItem, BusinessExpenseCategory, CurrencyType } from '../types';
+import { AppData, BusinessTransaction, BusinessInvestment, OweItem, BusinessExpenseCategory, CurrencyType, BusinessDocument } from '../types';
 import { formatCurrency, formatDate, calculateBusinessCashOnHand, calculateBusinessOwnedAssets, calculateBusinessRunway, generateMonthlyInsight, currencySymbols } from '../utils';
 
 interface BusinessSectionProps {
@@ -90,12 +90,15 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const businessOweItems = data.businessOweItems || [];
   const businessAssets = data.businessAssets || [];
   const currentStockProducts = data.currentStockProducts || [];
+  
+  const businessStockData = data.businessStockData || [];
+  const businessPropertyData = data.businessPropertyData || [];
 
   const productsInventory = data.productsInventory || [];
   const businessCustomers = data.businessCustomers || [];
   const businessDocuments = data.businessDocuments || [];
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'investment' | 'reportCard' | 'inventory' | 'customers' | 'documents'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'investment' | 'reportCard' | 'inventory' | 'customers' | 'documents' | 'stock-and-property'>('dashboard');
   const [txFilter, setTxFilter] = useState<'all' | 'sales' | 'expenses'>('all');
   const [txSearch, setTxSearch] = useState('');
   
@@ -117,13 +120,21 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const [expenseCustomCategory, setExpenseCustomCategory] = useState('');
 
   // Manage Possession Bucket 2 States
-  const [isPossessionsModalOpen, setIsPossessionsModalOpen] = useState(false);
-  const [possessionsTab, setPossessionsTab] = useState<'assets' | 'stock'>('assets');
-  const [newAssetName, setNewAssetName] = useState('');
-  const [newAssetValue, setNewAssetValue] = useState('');
-  const [newStockName, setNewStockName] = useState('');
-  const [newStockValue, setNewStockValue] = useState('');
-  const [newStockQty, setNewStockQty] = useState('1');
+  const [possessionsTab, setPossessionsTab] = useState<'business-stock' | 'property-database'>('business-stock');
+  
+  // New Property Sub-form
+  const [newPropName, setNewPropName] = useState('');
+  const [newPropLocation, setNewPropLocation] = useState('');
+  const [newPropCondition, setNewPropCondition] = useState<'new'|'used'|'old'>('new');
+  const [newPropValue, setNewPropValue] = useState('');
+
+  // New Stock Sub-form
+  const [newStockType, setNewStockType] = useState<'product' | 'service'>('product');
+  const [newStockPropName, setNewStockPropName] = useState('');
+  const [newStockQty, setNewStockQty] = useState('');
+  const [newStockUnitValue, setNewStockUnitValue] = useState('');
+  const [newStockTotalValue, setNewStockTotalValue] = useState('');
+  const [newStockLifecycle, setNewStockLifecycle] = useState('');
 
   // Personal Injected Cash states ("My Personal Money Put In")
   const [investmentAmount, setInvestmentAmount] = useState('');
@@ -175,8 +186,15 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
   // Calculate global Metrics based on current data
   const cashOnHand = calculateBusinessCashOnHand(businessTransactions, businessInvestments);
-  const assetsSum = businessAssets.reduce((sum, a) => sum + a.value, 0);
-  const stockProductsSum = currentStockProducts.reduce((sum, s) => sum + (s.value * (s.quantity || 1)), 0);
+  // Calculate backwards compatibility legacy sums + new structure sums
+  const legacyAssetsSum = businessAssets.reduce((sum, a) => sum + a.value, 0);
+  const newPropertySum = businessPropertyData.reduce((sum, p) => sum + p.estimatedValue, 0);
+  const assetsSum = legacyAssetsSum + newPropertySum;
+  
+  const legacyStockSum = currentStockProducts.reduce((sum, s) => sum + (s.value * (s.quantity || 1)), 0);
+  const newStockSum = businessStockData.reduce((sum, s) => sum + s.totalValue, 0);
+  const stockProductsSum = legacyStockSum + newStockSum;
+  
   const businessOwned = calculateBusinessOwnedAssets(businessTransactions) + assetsSum + stockProductsSum;
   const runwayStats = calculateBusinessRunway(businessTransactions, cashOnHand);
 
@@ -268,72 +286,6 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     setExpenseAmount('');
     setExpenseCustomCategory('');
     setExpenseNotes('');
-  };
-
-  // Business Possession Assets logging operations
-  const handleAddAssetItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = parseFloat(newAssetValue);
-    if (!newAssetName.trim() || isNaN(val) || val <= 0) {
-      alert('Please enter a valid asset name and positive value.');
-      return;
-    }
-
-    const newAsset = {
-      id: `ba-${Date.now()}`,
-      name: newAssetName.trim(),
-      value: val,
-      dateAdded: new Date().toISOString().split('T')[0]
-    };
-
-    onUpdateData({
-      ...data,
-      businessAssets: [...(data.businessAssets || []), newAsset]
-    });
-
-    setNewAssetName('');
-    setNewAssetValue('');
-  };
-
-  const handleDeleteAssetItem = (id: string) => {
-    onUpdateData({
-      ...data,
-      businessAssets: (data.businessAssets || []).filter(a => a.id !== id)
-    });
-  };
-
-  const handleAddStockItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = parseFloat(newStockValue);
-    const qty = parseInt(newStockQty, 10);
-    if (!newStockName.trim() || isNaN(val) || val <= 0 || isNaN(qty) || qty <= 0) {
-      alert('Please enter a valid stock product name, unit price, and quantity.');
-      return;
-    }
-
-    const newStock = {
-      id: `sp-${Date.now()}`,
-      name: newStockName.trim(),
-      value: val,
-      quantity: qty,
-      dateAdded: new Date().toISOString().split('T')[0]
-    };
-
-    onUpdateData({
-      ...data,
-      currentStockProducts: [...(data.currentStockProducts || []), newStock]
-    });
-
-    setNewStockName('');
-    setNewStockValue('');
-    setNewStockQty('1');
-  };
-
-  const handleDeleteStockItem = (id: string) => {
-    onUpdateData({
-      ...data,
-      currentStockProducts: (data.currentStockProducts || []).filter(s => s.id !== id)
-    });
   };
 
   // Log Investment Cash Out-of-Pocket
@@ -566,37 +518,63 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     const tax = 0; // Keeping simple
     const total = subtotal + tax;
 
+    let updatedDocs = [...businessDocuments];
+    let updatedTxs = [...(data.businessTransactions || [])];
+
     if (docEditId) {
-      const updatedDocs = businessDocuments.map(d => 
+      updatedDocs = businessDocuments.map(d => 
         d.id === docEditId
           ? { ...d, customerId: targetCustomerId, customerName: targetCustomerName, items: docItems, subtotal, tax, total, date: docDate, notes: docNotes, number: docNumber || d.number }
           : d
       );
-      onUpdateData({ ...data, businessDocuments: updatedDocs });
     } else {
-      const newDoc = {
-        id: `doc-${Date.now()}`,
-        type: docType,
+      const newDocId = `doc-${Date.now()}`;
+      const newDoc: BusinessDocument = {
+        id: newDocId,
+        type: docType as 'quotation' | 'invoice',
         number: docNumber || `${docType === 'quotation' ? 'Q-' : 'INV-'}${Math.floor(Math.random() * 10000)}`,
         customerId: targetCustomerId,
         customerName: targetCustomerName,
-        items: docItems,
+        items: docItems as any,
         subtotal,
         tax,
         total,
         date: docDate,
         notes: docNotes,
+        status: docType === 'invoice' ? 'pending' : undefined,
         createdAt: new Date().toISOString()
       };
-      
-      onUpdateData({ ...data, businessDocuments: [newDoc, ...businessDocuments] });
+      updatedDocs = [newDoc, ...businessDocuments];
     }
+    
+    onUpdateData({ ...data, businessDocuments: updatedDocs, businessTransactions: updatedTxs });
     
     // reset form
     setDocEditId(null);
     setDocCustomerId(''); setDocNumber(''); setDocItems([]); setDocNotes('');
     setCustName(''); setCustPhone(''); setCustCompany(''); setCustEmail(''); setCustAddress('');
     setIsDocumentModalOpen(false);
+  };
+
+  const handleProcessInvoice = (doc: any) => {
+    if (confirm(`Mark Invoice ${doc.number} as Processed (Paid) and log the Sales Revenue?`)) {
+      const productNames = doc.items.map((i: any) => i.description).join(', ');
+      const dateDesc = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      const timeDesc = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const newSale = {
+        id: `tx-${Date.now()}`,
+        type: 'sale' as const,
+        description: `${dateDesc} ${timeDesc}, ${productNames}, Sales (Inv #${doc.number})`,
+        amount: doc.total,
+        date: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      };
+      
+      const updatedDocs = businessDocuments.map(d => d.id === doc.id ? { ...d, status: 'processed' as const } : d);
+      const updatedTxs = [newSale, ...(data.businessTransactions || [])];
+      
+      onUpdateData({ ...data, businessDocuments: updatedDocs, businessTransactions: updatedTxs });
+    }
   };
   
   const handleEditDocument = (doc: any) => {
@@ -614,6 +592,48 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     if (confirm('Delete this document?')) {
       onUpdateData({ ...data, businessDocuments: businessDocuments.filter(d => d.id !== id) });
     }
+  };
+
+  const handleAddStock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStockPropName || !newStockTotalValue) return;
+
+    const newItem = {
+      id: `stock-${Date.now()}`,
+      type: newStockType,
+      name: newStockPropName,
+      quantity: newStockType === 'product' ? parseFloat(newStockQty) || 0 : undefined,
+      unitValue: newStockType === 'product' ? parseFloat(newStockUnitValue) || 0 : undefined,
+      totalValue: parseFloat(newStockTotalValue),
+      lifecycle: newStockType === 'service' ? newStockLifecycle : undefined,
+      dateLogged: new Date().toISOString()
+    };
+    onUpdateData({ ...data, businessStockData: [newItem, ...businessStockData] });
+    setNewStockPropName(''); setNewStockQty(''); setNewStockUnitValue(''); setNewStockTotalValue(''); setNewStockLifecycle('');
+  };
+
+  const handleDeleteStock = (id: string) => {
+    onUpdateData({ ...data, businessStockData: businessStockData.filter(s => s.id !== id) });
+  };
+
+  const handleAddProperty = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPropName || !newPropValue) return;
+
+    const newItem = {
+      id: `prop-${Date.now()}`,
+      name: newPropName,
+      location: newPropLocation,
+      condition: newPropCondition,
+      estimatedValue: parseFloat(newPropValue),
+      dateLogged: new Date().toISOString()
+    };
+    onUpdateData({ ...data, businessPropertyData: [newItem, ...businessPropertyData] });
+    setNewPropName(''); setNewPropLocation(''); setNewPropValue('');
+  };
+
+  const handleDeleteProperty = (id: string) => {
+    onUpdateData({ ...data, businessPropertyData: businessPropertyData.filter(p => p.id !== id) });
   };
 
   // Compile calculations for "End-of-Month Report Card"
@@ -1186,7 +1206,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   return (
     <div className="space-y-6">
       {/* 2nd Tier Navigation */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 mb-6">
         <button
           onClick={() => setActiveTab('dashboard')}
           className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
@@ -1219,6 +1239,17 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
         >
           <Package size={20} className={activeTab === 'inventory' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
           Products Inventory
+        </button>
+        <button
+          onClick={() => setActiveTab('stock-and-property')}
+          className={`px-3 py-3 rounded-xl font-semibold text-[11px] sm:text-xs transition-all flex flex-col items-center justify-center gap-2 border-2 text-center leading-tight ${
+            activeTab === 'stock-and-property'
+              ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'border-transparent bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:text-slate-400'
+          }`}
+        >
+          <Warehouse size={20} className={activeTab === 'stock-and-property' ? 'text-green-600 dark:text-green-400' : 'text-slate-400'} />
+          Stock & Property DB
         </button>
         <button
           onClick={() => setActiveTab('customers')}
@@ -1381,13 +1412,6 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                       </span>
                     </div>
                   </div>
-
-                  <button
-                    onClick={() => setIsPossessionsModalOpen(true)}
-                    className="w-full mt-3.5 text-[11px] font-bold text-sky-600 dark:text-sky-400 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/40 dark:hover:bg-sky-900/40 px-3 py-2 rounded-xl border border-sky-100 dark:border-sky-900/50 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus size={12} /> Log Assets & Stock
-                  </button>
                 </div>
               </div>
 
@@ -1965,6 +1989,27 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                         </button>
                       </div>
                     </div>
+                    {doc.type === 'invoice' && (
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
+                          <span className="text-slate-400">Status:</span>
+                          {doc.status === 'processed' ? (
+                            <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-2.5 py-1 rounded-md">Processed & Paid</span>
+                          ) : (
+                            <span className="text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2.5 py-1 rounded-md">Pending</span>
+                          )}
+                        </div>
+                        {doc.status !== 'processed' && (
+                          <button
+                            type="button"
+                            onClick={() => handleProcessInvoice(doc)}
+                            className="text-[11px] font-bold px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-sm shadow-emerald-600/20"
+                          >
+                            <FileCheck size={14} /> Mark Processed & Log Sales
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2679,230 +2724,219 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
         </div>
       )}
 
-      {/* Bucket 2 Possessions Management Modal */}
-      {isPossessionsModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50 dark:bg-slate-950/20">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50 flex items-center gap-1.5">
-                  🛠️ Bucket 2: Manage Possessions Assets & Stock
-                </h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Track machinery, equipment, tools, and resellable inventory that the business owns.
-                </p>
-              </div>
+      {activeTab === 'stock-and-property' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Stock and Business Property Database</h3>
+              <p className="text-xs text-slate-400 mt-1">Manage Business Stock (products/services) and Tangible Property & Equipment.</p>
+            </div>
+            
+            <div className="flex bg-slate-100/50 dark:bg-slate-950/20 p-1 rounded-xl">
               <button 
-                onClick={() => setIsPossessionsModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                onClick={() => setPossessionsTab('business-stock')}
+                className={`text-xs font-bold px-4 py-2 rounded-lg transition-all ${possessionsTab === 'business-stock' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-sky-450' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                <X size={18} />
+                Business Stock
+              </button>
+              <button 
+                onClick={() => setPossessionsTab('property-database')}
+                className={`text-xs font-bold px-4 py-2 rounded-lg transition-all ${possessionsTab === 'property-database' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-sky-450' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Property Database
               </button>
             </div>
+          </div>
 
-            {/* Sub Tabs Selection inside modal */}
-            <div className="flex border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/10 px-6 gap-4">
-              <button
-                type="button"
-                onClick={() => setPossessionsTab('assets')}
-                className={`py-3 text-[11px] font-bold border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
-                  possessionsTab === 'assets'
-                    ? 'border-blue-500 text-blue-600 dark:text-sky-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                }`}
-              >
-                🔧 Business Assets & Equipments ({formatCurrency(assetsSum, currency)})
-              </button>
-              <button
-                type="button"
-                onClick={() => setPossessionsTab('stock')}
-                className={`py-3 text-[11px] font-bold border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
-                  possessionsTab === 'stock'
-                    ? 'border-blue-500 text-blue-600 dark:text-sky-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                }`}
-              >
-                📦 Current Resellable Stock ({formatCurrency(stockProductsSum, currency)})
-              </button>
-            </div>
-
-            {/* Scrollable Container */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              
-              {/* Tab 1: Business Assets / Equipments */}
-              {possessionsTab === 'assets' && (
-                <div className="space-y-6">
-                  {/* Entry form */}
-                  <form onSubmit={handleAddAssetItem} className="bg-slate-50 dark:bg-slate-850/40 p-4 rounded-xl border border-slate-105 dark:border-slate-800 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">🏢 Log New Business Asset/Equipment</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Equipment / Asset Name</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Baking Oven, Commercial Mixer, Delivery Van..."
-                          value={newAssetName}
-                          onChange={(e) => setNewAssetName(e.target.value)}
-                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Estimated Current Value ({currencySymbols[currency] || '$'})</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={newAssetValue}
-                          onChange={(e) => setNewAssetValue(e.target.value)}
-                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-sky-550 dark:hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition cursor-pointer"
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {possessionsTab === 'business-stock' ? (
+              <>
+                <div className="lg:col-span-1 bg-blue-50/30 dark:bg-slate-900/40 border border-blue-100 dark:border-slate-800 rounded-xl p-5 shadow-sm h-fit">
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <Plus size={16} className="text-blue-500" /> New Stock Take
+                  </h4>
+                  <form onSubmit={handleAddStock} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Stock Type</label>
+                      <select 
+                        value={newStockType} 
+                        onChange={(e) => setNewStockType(e.target.value as 'product'|'service')} 
+                        className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
                       >
-                        + Add Asset to Possession Bucket
-                      </button>
+                        <option value="product">Physical Product</option>
+                        <option value="service">Service</option>
+                      </select>
                     </div>
-                  </form>
 
-                  {/* List of current assets */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Current Business Assets Ledger</h4>
-                    {(!data.businessAssets || data.businessAssets.length === 0) ? (
-                      <div className="text-center py-6 text-slate-400 text-[11px] border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                        No custom equipment assets logged yet. Use the entry form above to add your machinery or tools.
-                      </div>
-                    ) : (
-                      <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
-                        {data.businessAssets.map((asset) => (
-                          <div key={asset.id} className="p-3 flex items-center justify-between text-xs bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800 transition">
-                            <div className="truncate pr-4">
-                              <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{asset.name}</span>
-                              <span className="text-[9px] text-slate-400">Added: {asset.dateAdded}</span>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className="font-mono font-bold text-blue-600 dark:text-sky-450">{formatCurrency(asset.value, currency)}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteAssetItem(asset.id)}
-                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition cursor-pointer"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">{newStockType === 'product' ? 'Product Name' : 'Service Name'}</label>
+                      <input type="text" placeholder={newStockType === 'product' ? 'e.g. Leather Bags' : 'e.g. Software Subscription'} value={newStockPropName} onChange={e => setNewStockPropName(e.target.value)} required className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none" />
+                    </div>
+
+                    {newStockType === 'product' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Number of Items</label>
+                          <input type="number" placeholder="0" value={newStockQty} onChange={e => setNewStockQty(e.target.value)} className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Unit Value</label>
+                          <input type="number" step="0.01" placeholder="0.00" value={newStockUnitValue} onChange={e => setNewStockUnitValue(e.target.value)} className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none" />
+                        </div>
                       </div>
                     )}
-                  </div>
-                </div>
-              )}
 
-              {/* Tab 2: Stock Products Inventory */}
-              {possessionsTab === 'stock' && (
-                <div className="space-y-6">
-                  {/* Entry form */}
-                  <form onSubmit={handleAddStockItem} className="bg-slate-50 dark:bg-slate-850/40 p-4 rounded-xl border border-slate-105 dark:border-slate-800 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">📦 Log Current Stock Product or Materials</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-1">
-                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Product Name / Stock Item</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Flour Pack bulk, Raw timber, Coffee beans..."
-                          value={newStockName}
-                          onChange={(e) => setNewStockName(e.target.value)}
-                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
-                          required
-                        />
-                      </div>
+                    {newStockType === 'service' && (
                       <div>
-                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Unit Value ({currencySymbols[currency] || '$'})</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={newStockValue}
-                          onChange={(e) => setNewStockValue(e.target.value)}
-                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Quantity</label>
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="1"
-                          value={newStockQty}
-                          onChange={(e) => setNewStockQty(e.target.value)}
-                          className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-sky-550 dark:hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition cursor-pointer"
-                      >
-                        + Add Stock Item to Possession Bucket
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* List of current stock items */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Resellable Stock & Materials Inventory</h4>
-                    {(!data.currentStockProducts || data.currentStockProducts.length === 0) ? (
-                      <div className="text-center py-6 text-slate-400 text-[11px] border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                        No custom stock items logged yet. Use the entry form above to track bulk inventories.
-                      </div>
-                    ) : (
-                      <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
-                        {data.currentStockProducts.map((stock) => (
-                          <div key={stock.id} className="p-3 flex items-center justify-between text-xs bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-805 transition">
-                            <div className="truncate pr-4">
-                              <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{stock.name}</span>
-                              <span className="text-[9px] text-slate-400">Qty: {stock.quantity || 1} • Unit: {formatCurrency(stock.value, currency)}</span>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className="font-mono font-bold text-blue-600 dark:text-sky-450">{formatCurrency(stock.value * (stock.quantity || 1), currency)}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteStockItem(stock.id)}
-                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition cursor-pointer"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Service Lifecycle (Duration)</label>
+                        <input type="text" placeholder="e.g. 1 Year, 6 Months" value={newStockLifecycle} onChange={e => setNewStockLifecycle(e.target.value)} className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none" />
                       </div>
                     )}
-                  </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Total Stock Value</label>
+                      <input type="number" step="0.01" placeholder="0.00" value={newStockTotalValue} onChange={e => setNewStockTotalValue(e.target.value)} required className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none bg-blue-50/50 dark:bg-blue-900/10" />
+                    </div>
+
+                    <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition">
+                      Log New Stock
+                    </button>
+                  </form>
                 </div>
-              )}
 
-            </div>
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                  {businessStockData.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 text-slate-400 text-xs border-dashed border-2 border-slate-200 dark:border-slate-800 m-4 rounded-xl">
+                      No stock logged yet. Use the form to initiate a stock take.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/80 dark:bg-slate-800/80 text-[10px] uppercase tracking-wider text-slate-500">
+                            <th className="p-3 font-semibold">Stock Details</th>
+                            <th className="p-3 font-semibold text-right">Qty/Lifecycle</th>
+                            <th className="p-3 font-semibold text-right">Value</th>
+                            <th className="p-3 font-semibold text-center w-16">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                          {businessStockData.map(s => (
+                            <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                              <td className="p-3 leading-tight">
+                                <div className="font-bold text-slate-800 dark:text-slate-200">{s.name}</div>
+                                <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">{s.type}</div>
+                              </td>
+                              <td className="p-3 text-right text-slate-600 dark:text-slate-400">
+                                {s.type === 'product' ? (
+                                  s.quantity ? `${s.quantity} units` : '-'
+                                ) : (
+                                  s.lifecycle || '-'
+                                )}
+                              </td>
+                              <td className="p-3 text-right">
+                                <span className="font-bold font-mono text-blue-600 dark:text-sky-400">{formatCurrency(s.totalValue, currency)}</span>
+                                {s.type === 'product' && s.unitValue ? <div className="text-[10px] text-slate-400 block mt-0.5">{formatCurrency(s.unitValue, currency)}/ea</div> : null}
+                              </td>
+                              <td className="p-3 text-center">
+                                <button type="button" onClick={() => handleDeleteStock(s.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition cursor-pointer">
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="lg:col-span-1 bg-emerald-50/30 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-5 shadow-sm h-fit">
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <Building size={16} className="text-emerald-500" /> Add New Property/Equipment
+                  </h4>
+                  <form onSubmit={handleAddProperty} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Property/Equipment Name</label>
+                      <input type="text" placeholder="e.g. Delivery Van, Office AC" value={newPropName} onChange={e => setNewPropName(e.target.value)} required className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none" />
+                    </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-105 dark:border-slate-850 flex justify-end gap-2 bg-slate-50 dark:bg-slate-950/10 shrink-0">
-              <button 
-                type="button" 
-                onClick={() => setIsPossessionsModalOpen(false)} 
-                className="px-5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-905 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-white rounded-xl transition cursor-pointer"
-              >
-                Close Asset Manager
-              </button>
-            </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Place Located</label>
+                      <input type="text" placeholder="e.g. Main Office, Warehouse B" value={newPropLocation} onChange={e => setNewPropLocation(e.target.value)} className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none" />
+                    </div>
 
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Condition</label>
+                      <select 
+                        value={newPropCondition} 
+                        onChange={(e) => setNewPropCondition(e.target.value as 'new'|'used'|'old')} 
+                        className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none"
+                      >
+                        <option value="new">New</option>
+                        <option value="used">Used / Good</option>
+                        <option value="old">Old / Needing Fix</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Estimated Value</label>
+                      <input type="number" step="0.01" placeholder="0.00" value={newPropValue} onChange={e => setNewPropValue(e.target.value)} required className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-lg focus:outline-none bg-emerald-50/50 dark:bg-emerald-900/10" />
+                    </div>
+
+                    <button type="submit" className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition">
+                      Log Property
+                    </button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                  {businessPropertyData.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 text-slate-400 text-xs border-dashed border-2 border-slate-200 dark:border-slate-800 m-4 rounded-xl">
+                      No property or equipment logged yet. Use the form to record tangibles.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/80 dark:bg-slate-800/80 text-[10px] uppercase tracking-wider text-slate-500">
+                            <th className="p-3 font-semibold">Equipment / Asset</th>
+                            <th className="p-3 font-semibold">Condition</th>
+                            <th className="p-3 font-semibold text-right">Value</th>
+                            <th className="p-3 font-semibold text-center w-16">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                          {businessPropertyData.map(p => (
+                            <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                              <td className="p-3 leading-tight">
+                                <div className="font-bold text-slate-800 dark:text-slate-200">{p.name}</div>
+                                {p.location && <div className="text-[10px] text-slate-400 mt-0.5">Loc: {p.location}</div>}
+                              </td>
+                              <td className="p-3">
+                                <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${p.condition === 'new' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' : p.condition === 'used' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'}`}>
+                                  {p.condition}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right">
+                                <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(p.estimatedValue, currency)}</span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <button type="button" onClick={() => handleDeleteProperty(p.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition cursor-pointer">
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
