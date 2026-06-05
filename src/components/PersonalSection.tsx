@@ -4,7 +4,7 @@ import {
   LineChart, Gift, Coins, Utensils, Car, Film, ShoppingBag, 
   FileText, Heart, GraduationCap, Ellipsis, Trash2, Edit2, 
   Plus, Calendar, Tag, Info, AlertTriangle, ChevronRight, X, Repeat,
-  PieChart
+  PieChart, Activity
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -479,6 +479,60 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
             >
               <Plus size={16} /> Add Expense
             </button>
+          </div>
+
+          {/* Monthly Performance Card */}
+          <div className="glass-card rounded-2xl p-6 mt-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 animate-pulse"></div>
+            <div className="flex items-center gap-3 mb-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="p-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 rounded-lg">
+                <Activity size={20} />
+              </div>
+              <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-base">Monthly Performance</h3>
+            </div>
+            
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="w-full md:w-1/2">
+                <div className="flex justify-between text-sm mb-2 font-medium">
+                  <span className="text-slate-500 dark:text-slate-400">Gross Income</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCurrency(totalIncome, currency)}</span>
+                </div>
+                <div className="flex justify-between text-sm mb-2 font-medium">
+                  <span className="text-slate-500 dark:text-slate-400">Total Expense Outlay</span>
+                  <span className="text-red-500 dark:text-red-400 font-bold">{formatCurrency(totalExpenses, currency)}</span>
+                </div>
+                <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 my-3"></div>
+                <div className="flex justify-between text-sm font-extrabold uppercase tracking-widest">
+                  <span className="text-slate-800 dark:text-slate-200">Net Position</span>
+                  <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(Math.max(0, totalIncome - totalExpenses), currency)}</span>
+                </div>
+              </div>
+
+              <div className="w-full md:w-1/2 bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1 uppercase tracking-wider text-center">Savings Target Achievement</div>
+                <div className="flex items-end gap-1 mb-2">
+                   {(() => {
+                      const tgt = data.profile.savingsGoal > 0 ? data.profile.savingsGoal : 1;
+                      const net = Math.max(0, totalIncome - totalExpenses);
+                      const pct = Math.min(100, Math.round((net / tgt) * 100));
+                      return (
+                        <>
+                          <span className="text-4xl font-black text-indigo-600 dark:text-indigo-400">{pct}%</span>
+                        </>
+                      );
+                   })()}
+                </div>
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                  {(() => {
+                      const tgt = data.profile.savingsGoal > 0 ? data.profile.savingsGoal : 1;
+                      const net = Math.max(0, totalIncome - totalExpenses);
+                      const pct = Math.min(100, Math.round((net / tgt) * 100));
+                      return <div className="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }}></div>;
+                  })()}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-2 font-medium">Goal: {formatCurrency(data.profile.savingsGoal, currency)}</div>
+              </div>
+            </div>
           </div>
 
           {/* Savings Vault Ledger Controls & Monthly Reset Card */}
@@ -959,6 +1013,23 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
       {/* Budget limits setup tab */}
       {activeTab === 'budgets' && (
         <div className="space-y-6">
+          {(() => {
+            const overBudgetCategories = data.budgets.filter(b => calculateBudgetSpent(b.category) > b.limit);
+            if (overBudgetCategories.length > 0) {
+              return (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3">
+                  <AlertTriangle className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <h4 className="text-red-800 dark:text-red-300 font-bold text-sm">Budget Exhausted Warning</h4>
+                    <p className="text-red-600 dark:text-red-400 mx-auto text-xs font-medium">
+                      You have exceeded the monthly limit for {overBudgetCategories.length} categor{overBudgetCategories.length === 1 ? 'y' : 'ies'}.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-base">Budget Category Limits Planner</h3>

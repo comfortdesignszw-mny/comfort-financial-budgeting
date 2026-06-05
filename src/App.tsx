@@ -19,6 +19,7 @@ import PersonalSection from './components/PersonalSection';
 import BusinessSection from './components/BusinessSection';
 import HRSection from './components/HRSection';
 import SchedulerSection from './components/SchedulerSection';
+import LocalNotificationsManager from './components/LocalNotificationsManager';
 import comfortLogo from './assets/images/comfort_logo_brand_1779617398401.png';
 
 export default function App() {
@@ -31,6 +32,12 @@ export default function App() {
   
   const [showPinDisable, setShowPinDisable] = useState(false);
   const [disablePinInput, setDisablePinInput] = useState('');
+  const [notificationStatus, setNotificationStatus] = useState<string>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'unsupported';
+  });
 
   const [data, setData] = useState<AppData>(() => {
     try {
@@ -369,6 +376,24 @@ export default function App() {
     });
   };
 
+  const handleRequestNotifications = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setNotificationStatus(permission);
+      if (permission === 'denied') {
+        alert("Please enable notifications in your browser settings to receive local alerts.");
+      } else if (permission === 'granted') {
+        setNotification({
+          title: 'Notifications Enabled',
+          message: 'You will now receive monthend rollover checks and scheduler reminder notifications locally.',
+          type: 'success'
+        });
+      }
+    } else {
+      alert("Push notifications are not supported in this browser.");
+    }
+  };
+
   // --- App Lock Handlers ---
   const handlePinSubmit = async () => {
     if (pinStep === 'create') {
@@ -603,6 +628,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans antialiased text-[16px]">
+      <LocalNotificationsManager data={data} />
       
       {/* Mobile Header Bar */}
       <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 font-sans">
@@ -1183,6 +1209,37 @@ export default function App() {
                           className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
                         >
                           Enable App Lock
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notification Settings Panel */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="p-1 px-2 bg-purple-100 dark:bg-purple-950/45 text-purple-700 dark:text-purple-400 text-[10px] font-bold uppercase rounded-md tracking-wider">
+                        Alert Capabilities
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Targeted Local Alerts {notificationStatus === 'granted' && ' (Active)'}</h4>
+                    <p className="text-xs text-slate-400">Never miss a month-end rollover or crucial schedule due date. Local alerts operate natively without any backend.</p>
+                    
+                    <div className="pt-4">
+                      {notificationStatus === 'granted' ? (
+                        <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl">
+                          <CheckCircle2 size={18} className="text-emerald-500" />
+                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 pl-1">Push System Active</span>
+                        </div>
+                      ) : notificationStatus === 'unsupported' ? (
+                         <div className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 p-3 rounded-lg text-center font-medium">Browser Not Supported</div>
+                      ) : (
+                        <button
+                          onClick={handleRequestNotifications}
+                          className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition"
+                        >
+                          Enable Alerts
                         </button>
                       )}
                     </div>

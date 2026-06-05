@@ -3,7 +3,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Shield, HelpCircle, Flame, 
   Layers, Package, Building, Users, Trash2, Calendar, 
   Plus, DollarSign, PenTool, CheckSquare, Square, FileCheck, ArrowRight, Eye, Info, X,
-  FileSpreadsheet, FileText, Utensils, Car, Download, Share2, Edit2, Warehouse
+  FileSpreadsheet, FileText, Utensils, Car, Download, Share2, Edit2, Warehouse, Activity
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { 
@@ -16,7 +16,7 @@ import {
   Tooltip 
 } from 'recharts';
 import { AppData, BusinessTransaction, BusinessInvestment, OweItem, BusinessExpenseCategory, CurrencyType, BusinessDocument } from '../types';
-import { formatCurrency, formatDate, calculateBusinessCashOnHand, calculateBusinessOwnedAssets, calculateBusinessRunway, generateMonthlyInsight, currencySymbols } from '../utils';
+import { formatCurrency, formatDate, calculateBusinessCashOnHand, calculateBusinessRunway, generateMonthlyInsight, currencySymbols } from '../utils';
 
 interface BusinessSectionProps {
   data: AppData;
@@ -195,7 +195,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const newStockSum = businessStockData.reduce((sum, s) => sum + s.totalValue, 0);
   const stockProductsSum = legacyStockSum + newStockSum;
   
-  const businessOwned = calculateBusinessOwnedAssets(businessTransactions) + assetsSum + stockProductsSum;
+  const businessOwned = assetsSum + stockProductsSum;
   const runwayStats = calculateBusinessRunway(businessTransactions, cashOnHand);
 
   // Filter current month transactions for traffic lights
@@ -1288,6 +1288,65 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
 
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
+
+          {/* Monthly Performance Card */}
+          {(() => {
+             const d = new Date();
+             const currentYear = d.getFullYear();
+             const currentMonth = d.getMonth();
+             
+             const currentMonthTx = businessTransactions.filter(t => {
+                const txD = new Date(t.date);
+                return txD.getFullYear() === currentYear && txD.getMonth() === currentMonth;
+             });
+
+             const mSales = currentMonthTx.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+             const mExpenses = currentMonthTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+             const net = Math.max(0, mSales - mExpenses);
+             const tgt = mSales > 0 ? mSales : 1;
+             const pct = Math.min(100, Math.round((net / tgt) * 100));
+
+             return (
+               <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 animate-pulse"></div>
+                 <div className="flex items-center gap-3 mb-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+                   <div className="p-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 rounded-lg">
+                     <Activity size={20} />
+                   </div>
+                   <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-base">Monthly Performance</h3>
+                 </div>
+                 
+                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                   <div className="w-full md:w-1/2">
+                     <div className="flex justify-between text-sm mb-2 font-medium">
+                       <span className="text-slate-500 dark:text-slate-400">Total Monthly Revenue</span>
+                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCurrency(mSales, currency)}</span>
+                     </div>
+                     <div className="flex justify-between text-sm mb-2 font-medium">
+                       <span className="text-slate-500 dark:text-slate-400">Total Monthly Expenses</span>
+                       <span className="text-red-500 dark:text-red-400 font-bold">{formatCurrency(mExpenses, currency)}</span>
+                     </div>
+                     <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 my-3"></div>
+                     <div className="flex justify-between text-sm font-extrabold uppercase tracking-widest">
+                       <span className="text-slate-800 dark:text-slate-200">Net Profit</span>
+                       <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(Math.max(0, mSales - mExpenses), currency)}</span>
+                     </div>
+                   </div>
+
+                   <div className="w-full md:w-1/2 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center">
+                     <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1 uppercase tracking-wider text-center">Net Margin vs Revenue</div>
+                     <div className="flex items-end gap-1 mb-2">
+                        <span className="text-4xl font-black text-indigo-600 dark:text-indigo-400">{pct}%</span>
+                     </div>
+                     <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                       <div className="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }}></div>
+                     </div>
+                     <div className="text-[10px] text-slate-400 mt-2 font-medium">Retained earnings percentage</div>
+                   </div>
+                 </div>
+               </div>
+             );
+          })()}
           
           {/* Business Split Action fast money tracker layout */}
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm">
@@ -1393,12 +1452,6 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
                   
                   {/* Detailed breakdown below */}
                   <div className="w-full mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 space-y-1 text-left px-2">
-                    <div className="flex justify-between">
-                      <span>⚙️ Expense Tools/Stock:</span>
-                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
-                        {formatCurrency(calculateBusinessOwnedAssets(businessTransactions), currency)}
-                      </span>
-                    </div>
                     <div className="flex justify-between">
                       <span>🛠️ Business Assets (Equipments):</span>
                       <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
