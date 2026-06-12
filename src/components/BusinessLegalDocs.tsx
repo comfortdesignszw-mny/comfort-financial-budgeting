@@ -373,15 +373,28 @@ Commissioner of Oaths (Rubber Seal)`;
   // Export to PDF
   const downloadAsPDF = (doc: LegalDocument) => {
     const pdf = new jsPDF();
-    pdf.setFont('courier', 'bold');
-    pdf.setFontSize(16);
-    pdf.setTextColor('#0f172a');
-    pdf.text("COMFORT SUITE LEGAL ARCHIVE", 14, 20);
+    
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        pdf.addImage(data.profile.companyLogo, 'PNG', 14, 10, 15, 15);
+        logoInserted = true;
+      } catch (err) {
+        console.warn("Failed to render logo in legal PDF:", err);
+      }
+    }
 
-    pdf.setFont('courier', 'normal');
+    const brandName = data.profile.companyName ? data.profile.companyName.toUpperCase() : "COMFORT SUITE LEGAL ARCHIVE";
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(14);
+    pdf.setTextColor('#0f172a');
+    pdf.text(brandName, logoInserted ? 34 : 14, 18);
+
+    pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor('#64748b');
-    pdf.text(`Document ID: ${doc.id} | Generated: ${new Date(doc.createdAt).toLocaleDateString()}`, 14, 26);
+    pdf.text(`Document ID: ${doc.id} | Generated: ${new Date(doc.createdAt).toLocaleDateString()}`, logoInserted ? 34 : 14, 23);
     pdf.line(14, 28, 196, 28);
 
     pdf.setFont('helvetica', 'normal');

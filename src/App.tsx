@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Wallet, UserCog, Download, Upload, Trash2, Save, 
   Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2, Heart, Scale, ShieldCheck,
-  Sun, Moon, Sparkles, Smartphone, Laptop, Check, Calendar
+  Sun, Moon, Sparkles, Smartphone, Laptop, Check, Calendar, Image
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
@@ -114,6 +114,7 @@ export default function App() {
   const [companyName, setCompanyName] = useState(data.profile.companyName || '');
   const [companyPhone, setCompanyPhone] = useState(data.profile.companyPhone || '');
   const [companyEmail, setCompanyEmail] = useState(data.profile.companyEmail || '');
+  const [companyLogo, setCompanyLogo] = useState(data.profile.companyLogo || '');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [activeLegalModal, setActiveLegalModal] = useState<'tos' | 'privacy' | null>(null);
   
@@ -288,6 +289,7 @@ export default function App() {
     setCompanyName(data.profile.companyName || '');
     setCompanyPhone(data.profile.companyPhone || '');
     setCompanyEmail(data.profile.companyEmail || '');
+    setCompanyLogo(data.profile.companyLogo || '');
   }, [data]);
 
   // Synchronize dynamic local data changes across concurrent windows/tabs as first source of truth
@@ -376,7 +378,8 @@ export default function App() {
         ...data.profile,
         companyName: companyName.trim(),
         companyPhone: companyPhone.trim(),
-        companyEmail: companyEmail.trim()
+        companyEmail: companyEmail.trim(),
+        companyLogo: companyLogo
       }
     };
     setData(updated);
@@ -1128,6 +1131,55 @@ export default function App() {
                           placeholder="e.g. billing@comfortdesigns.com"
                           className="w-full text-sm p-3 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-xl focus:outline-none"
                         />
+                      </div>
+
+                      {/* Brand Logo Upload */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Company logo image (Brand persistence)</label>
+                        <div className="flex items-center gap-4 border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/40">
+                          {companyLogo ? (
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex items-center justify-center">
+                              <img src={companyLogo} alt="Company logo preview" className="w-full h-full object-contain" />
+                              <button
+                                type="button"
+                                onClick={() => setCompanyLogo('')}
+                                className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full cursor-pointer transition shadow"
+                                title="Remove Logo"
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="w-16 h-16 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 shrink-0 flex items-center justify-center text-slate-400 dark:text-slate-600">
+                              <Image size={20} />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setCompanyLogo(reader.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="hidden"
+                              id="company-logo-upload"
+                            />
+                            <label
+                              htmlFor="company-logo-upload"
+                              className="inline-flex items-center justify-center py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800 rounded-lg text-[11px] font-bold text-slate-700 dark:text-slate-300 transition cursor-pointer shadow-sm"
+                            >
+                              Upload Brand Logo
+                            </label>
+                            <p className="text-[10px] text-slate-400 mt-1">Accepts PNG, JPG, JPEG</p>
+                          </div>
+                        </div>
                       </div>
 
                       <button

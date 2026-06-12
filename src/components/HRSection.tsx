@@ -118,24 +118,38 @@ export default function HRSection({ data, onUpdateData, currency, showToast }: P
     const pdf = new jsPDF();
     let currentY = 20;
 
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        pdf.addImage(data.profile.companyLogo, 'PNG', 14, 10, 15, 15);
+        logoInserted = true;
+      } catch (err) {
+        console.warn("Could not insert logo in Employee Profile PDF:", err);
+      }
+    }
+
+    if (logoInserted) {
+      currentY = 32;
+    }
+
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(22);
     pdf.setTextColor('#4f46e5');
-    pdf.text('EMPLOYEE PROFILE', 14, currentY);
+    pdf.text('EMPLOYEE PROFILE', logoInserted ? 34 : 14, logoInserted ? 22 : currentY);
     
     // Organization info at top right
     const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
     pdf.setFontSize(10);
     pdf.setTextColor('#0f172a');
-    pdf.text(compName.toUpperCase(), 196, currentY, { align: 'right' });
+    pdf.text(compName.toUpperCase(), 196, logoInserted ? 15 : currentY, { align: 'right' });
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor('#64748b');
     if (data.profile.companyEmail) {
-      pdf.text(data.profile.companyEmail, 196, currentY + 5, { align: 'right' });
+      pdf.text(data.profile.companyEmail, 196, (logoInserted ? 15 : currentY) + 5, { align: 'right' });
     }
     if (data.profile.companyPhone) {
-      pdf.text(data.profile.companyPhone, 196, currentY + 10, { align: 'right' });
+      pdf.text(data.profile.companyPhone, 196, (logoInserted ? 15 : currentY) + 10, { align: 'right' });
     }
     
     currentY += 15;
@@ -348,25 +362,39 @@ export default function HRSection({ data, onUpdateData, currency, showToast }: P
     const pdf = new jsPDF();
     let currentY = 20;
 
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        pdf.addImage(data.profile.companyLogo, 'PNG', 14, 10, 15, 15);
+        logoInserted = true;
+      } catch (err) {
+        console.warn("Could not insert logo in Payslip PDF:", err);
+      }
+    }
+
+    if (logoInserted) {
+      currentY = 32;
+    }
+
     // Header / Branding
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(24);
     pdf.setTextColor('#4f46e5');
-    pdf.text('PAYSLIP', 14, currentY);
+    pdf.text('PAYSLIP', logoInserted ? 34 : 14, logoInserted ? 22 : currentY);
     
     // Organization info at top right
     const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
     pdf.setFontSize(12);
     pdf.setTextColor('#0f172a');
-    pdf.text(compName.toUpperCase(), 196, currentY, { align: 'right' });
+    pdf.text(compName.toUpperCase(), 196, logoInserted ? 15 : currentY, { align: 'right' });
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(10);
     pdf.setTextColor('#64748b');
     if (data.profile.companyEmail) {
-      pdf.text(data.profile.companyEmail, 196, currentY + 6, { align: 'right' });
+      pdf.text(data.profile.companyEmail, 196, (logoInserted ? 15 : currentY) + 6, { align: 'right' });
     }
     if (data.profile.companyPhone) {
-      pdf.text(data.profile.companyPhone, 196, currentY + 12, { align: 'right' });
+      pdf.text(data.profile.companyPhone, 196, (logoInserted ? 15 : currentY) + 12, { align: 'right' });
     }
     
     currentY += 15;
@@ -517,24 +545,38 @@ export default function HRSection({ data, onUpdateData, currency, showToast }: P
     const pdf = new jsPDF('landscape');
     let currentY = 20;
 
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        pdf.addImage(data.profile.companyLogo, 'PNG', 14, 10, 15, 15);
+        logoInserted = true;
+      } catch (err) {
+        console.warn("Could not insert logo in Payroll summary PDF:", err);
+      }
+    }
+
+    if (logoInserted) {
+      currentY = 32;
+    }
+
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(22);
     pdf.setTextColor('#4f46e5');
-    pdf.text('CONSOLIDATED PAYROLL SUMMARY', 14, currentY);
+    pdf.text('CONSOLIDATED PAYROLL SUMMARY', logoInserted ? 34 : 14, logoInserted ? 22 : currentY);
     
     // Organization info at top right
     const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
     pdf.setFontSize(12);
     pdf.setTextColor('#0f172a');
-    pdf.text(compName.toUpperCase(), 283, currentY, { align: 'right' });
+    pdf.text(compName.toUpperCase(), 283, logoInserted ? 15 : currentY, { align: 'right' });
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(10);
     pdf.setTextColor('#64748b');
     if (data.profile.companyEmail) {
-      pdf.text(data.profile.companyEmail, 283, currentY + 6, { align: 'right' });
+      pdf.text(data.profile.companyEmail, 283, (logoInserted ? 15 : currentY) + 6, { align: 'right' });
     }
     if (data.profile.companyPhone) {
-      pdf.text(data.profile.companyPhone, 283, currentY + 12, { align: 'right' });
+      pdf.text(data.profile.companyPhone, 283, (logoInserted ? 15 : currentY) + 12, { align: 'right' });
     }
     
     currentY += 12;
@@ -1201,12 +1243,32 @@ export default function HRSection({ data, onUpdateData, currency, showToast }: P
           // Header Text
           pdf.setTextColor('#ffffff');
           pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(7.5);
-          pdf.text('COMFORT FINANCE SUITE', 27, 7, { align: 'center' });
           
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(4.5);
-          pdf.text('Unified Finance & Corporate Platform', 27, 11, { align: 'center' });
+          const finalCompanyName = (data.profile.companyName || 'Comfort Finance Suite').toUpperCase();
+
+          if (data.profile.companyLogo) {
+            try {
+              pdf.addImage(data.profile.companyLogo, 'PNG', 3, 3, 10, 10);
+              pdf.setFontSize(finalCompanyName.length > 20 ? 5.5 : 6.5);
+              pdf.text(finalCompanyName, 33, 7, { align: 'center' });
+              pdf.setFont('helvetica', 'normal');
+              pdf.setFontSize(4);
+              pdf.text('CORPORATE ID BADGE', 33, 11, { align: 'center' });
+            } catch (err) {
+              console.warn("Could not insert logo in badge PDF:", err);
+              pdf.setFontSize(finalCompanyName.length > 20 ? 6.5 : 7.5);
+              pdf.text(finalCompanyName, 27, 7, { align: 'center' });
+              pdf.setFont('helvetica', 'normal');
+              pdf.setFontSize(4.5);
+              pdf.text('Unified Finance & Corporate Platform', 27, 11, { align: 'center' });
+            }
+          } else {
+            pdf.setFontSize(finalCompanyName.length > 20 ? 6.5 : 7.5);
+            pdf.text(finalCompanyName, 27, 7, { align: 'center' });
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(4.5);
+            pdf.text('Unified Finance & Corporate Platform', 27, 11, { align: 'center' });
+          }
 
           // Employee Photo placeholder or base64 image
           if (emp.photo) {
@@ -1287,9 +1349,18 @@ export default function HRSection({ data, onUpdateData, currency, showToast }: P
                 <div id="badge-front-v" className="w-[220px] h-[346px] bg-slate-950 dark:bg-black rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col items-center relative">
                   
                   {/* Top Teal Brand Header bar */}
-                  <div className="w-full h-[65px] bg-[#0F172A] flex flex-col items-center justify-center p-2 border-b-2 border-teal-500 text-center">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-white leading-tight">Comfort Finance Suite</span>
-                    <span className="text-[7px] text-teal-400 tracking-wider leading-none mt-0.5">Corporate & Unified Finance Engine</span>
+                  <div className="w-full h-[65px] bg-[#0F172A] flex items-center justify-center gap-2 p-2 border-b-2 border-teal-500">
+                    {data.profile.companyLogo && (
+                      <img src={data.profile.companyLogo} className="w-7 h-7 object-contain rounded-md" alt="Logo" />
+                    )}
+                    <div className="flex flex-col items-start text-left min-w-0 flex-1">
+                      <span className="text-[9px] uppercase font-black tracking-widest text-white leading-tight truncate w-full">
+                        {data.profile.companyName || 'Comfort Finance Suite'}
+                      </span>
+                      <span className="text-[6.5px] text-teal-400 tracking-wider leading-none mt-0.5 uppercase truncate w-full">
+                        Corporate ID Card
+                      </span>
+                    </div>
                   </div>
 
                   {/* ID slot connector representative placeholder */}

@@ -799,26 +799,34 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
     doc.setFillColor(13, 148, 136);
     doc.rect(0, 0, 210, 40, 'F');
 
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        doc.addImage(data.profile.companyLogo, 'PNG', 14, 5, 18, 18);
+        logoInserted = true;
+      } catch (e) {
+        console.warn("Could not insert logo in Statement PDF: ", e);
+      }
+    }
+
+    const companyTitleText = (data.profile.companyName || 'COMFORT FINANCIAL BUDGETING').toUpperCase();
+
     // Title & Brand info
     doc.setTextColor(255, 255, 255);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text('COMFORT FINANCIAL BUDGETING', 14, 16);
+    doc.setFontSize(companyTitleText.length > 25 ? 14 : 20);
+    doc.text(companyTitleText, logoInserted ? 36 : 14, 16);
     
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text('Unified Corporate & Personal Finance Engine', 14, 22);
-    doc.text(`Report Period: ${reportMonth}`, 14, 28);
+    doc.text('Unified Corporate & Personal Finance Engine', logoInserted ? 36 : 14, 22);
+    doc.text(`Report Period: ${reportMonth}`, logoInserted ? 36 : 14, 28);
 
     // Organization info at top right
-    if (data.profile.companyName) {
-      doc.setFont('Helvetica', 'bold');
-      doc.text(data.profile.companyName.toUpperCase(), 196, 16, { align: 'right' });
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(9);
-      if (data.profile.companyEmail) doc.text(data.profile.companyEmail, 196, 21, { align: 'right' });
-      if (data.profile.companyPhone) doc.text(data.profile.companyPhone, 196, 25, { align: 'right' });
-    }
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(9);
+    if (data.profile.companyEmail) doc.text(data.profile.companyEmail, 196, 16, { align: 'right' });
+    if (data.profile.companyPhone) doc.text(data.profile.companyPhone, 196, 21, { align: 'right' });
 
     // Summary Section
     doc.setTextColor(30, 41, 59);
@@ -982,10 +990,21 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
     const pdf = new jsPDF();
     pdf.setFillColor(13, 148, 136);
     pdf.rect(0, 0, 210, 30, 'F');
+    
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        pdf.addImage(data.profile.companyLogo, 'PNG', 14, 5, 20, 20);
+        logoInserted = true;
+      } catch (e) {
+        console.warn("Could not insert logo: ", e);
+      }
+    }
+    
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(20);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('CLIENT PROFILE', 14, 20);
+    pdf.text('CLIENT PROFILE', logoInserted ? 38 : 14, 20);
     
     // Organization info at top right
     const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
@@ -1034,10 +1053,21 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
     const pdf = new jsPDF();
     pdf.setFillColor(13, 148, 136);
     pdf.rect(0, 0, 210, 30, 'F');
+    
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        pdf.addImage(data.profile.companyLogo, 'PNG', 14, 5, 20, 20);
+        logoInserted = true;
+      } catch (e) {
+        console.warn("Could not insert logo: ", e);
+      }
+    }
+    
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(20);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('PRODUCT PORTFOLIO', 14, 20);
+    pdf.text('PRODUCT PORTFOLIO', logoInserted ? 38 : 14, 20);
     
     // Organization info at top right
     const compName = data.profile.companyName || data.profile.name || 'Your Company Name';
@@ -1090,11 +1120,21 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
     // Formatting variables
     const rightMargin = 196;
     
+    let logoInserted = false;
+    if (data.profile.companyLogo) {
+      try {
+        pdf.addImage(data.profile.companyLogo, 'PNG', 14, 8, 16, 16);
+        logoInserted = true;
+      } catch (e) {
+        console.warn("Could not insert logo in Invoice/Quotation PDF: ", e);
+      }
+    }
+
     // Branding/Header
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(28);
     pdf.setTextColor(docObj.type === 'invoice' ? '#059669' : '#4f46e5');
-    pdf.text((docObj.type === 'invoice' ? 'INVOICE' : 'QUOTATION'), 14, 24);
+    pdf.text((docObj.type === 'invoice' ? 'INVOICE' : 'QUOTATION'), logoInserted ? 36 : 14, 24);
     
     // Company Branding on the top right
     pdf.setTextColor('#0f172a');

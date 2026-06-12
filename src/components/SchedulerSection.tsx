@@ -401,10 +401,22 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
       doc.setFillColor(13, 148, 136); // Teal header band
       doc.rect(0, 0, 210, 35, 'F');
       
+      let logoInserted = false;
+      if (data.profile.companyLogo) {
+        try {
+          doc.addImage(data.profile.companyLogo, 'PNG', 14, 5, 25, 25);
+          logoInserted = true;
+        } catch (e) {
+          console.warn("Could not insert logo in Note PDF:", e);
+        }
+      }
+
+      const compTitle = data.profile.companyName ? data.profile.companyName.toUpperCase() : 'COMFORT FINANCIAL NOTE';
+
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      doc.text('COMFORT FINANCIAL NOTE', 14, 22);
+      doc.setFontSize(compTitle.length > 25 ? 14 : 20);
+      doc.text(compTitle, logoInserted ? 44 : 14, 22);
       
       doc.setTextColor(51, 65, 85);
       doc.setFont('helvetica', 'normal');

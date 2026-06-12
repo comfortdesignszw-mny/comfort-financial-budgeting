@@ -15,6 +15,7 @@ export interface ProfileState {
   companyName?: string;
   companyPhone?: string;
   companyEmail?: string;
+  companyLogo?: string;
   accumulatedSavings?: number;
   savingsHistory?: { date: string; amount: number }[];
 }
