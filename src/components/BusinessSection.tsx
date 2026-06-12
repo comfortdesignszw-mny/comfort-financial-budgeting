@@ -23,6 +23,7 @@ interface BusinessSectionProps {
   onUpdateData: (newData: AppData) => void;
   currency: CurrencyType;
   theme: 'light' | 'dark';
+  showToast?: (message: string) => void;
 }
 
 export const businessExpenseCategories: Record<BusinessExpenseCategory, { icon: React.ReactNode; label: string; desc: string; color: string; bg: string }> = {
@@ -84,7 +85,7 @@ export const businessExpenseCategories: Record<BusinessExpenseCategory, { icon: 
   }
 };
 
-export default function BusinessSection({ data, onUpdateData, currency, theme }: BusinessSectionProps) {
+export default function BusinessSection({ data, onUpdateData, currency, theme, showToast }: BusinessSectionProps) {
   const businessTransactions = data.businessTransactions || [];
   const businessInvestments = data.businessInvestments || [];
   const businessOweItems = data.businessOweItems || [];
@@ -154,6 +155,8 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   const [prodCat, setProdCat] = useState('');
   const [prodPrice, setProdPrice] = useState('');
   const [prodQty, setProdQty] = useState('');
+  const [prodOrderPrice, setProdOrderPrice] = useState('');
+  const [prodSellingPrice, setProdSellingPrice] = useState('');
 
   // Customer Database States
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -246,6 +249,10 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       businessTransactions: [newTx, ...businessTransactions]
     });
 
+    if (showToast) {
+      showToast('Sales revenue transaction recorded to sandbox');
+    }
+
     setIsLogSaleOpen(false);
     setSaleDesc('');
     setSaleAmount('');
@@ -280,6 +287,10 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       ...data,
       businessTransactions: [newTx, ...businessTransactions]
     });
+
+    if (showToast) {
+      showToast('Business expense transaction logged successfully');
+    }
 
     setIsLogExpenseOpen(false);
     setExpenseDesc('');
@@ -376,12 +387,23 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
   // --- PRODUCTS, CUSTOMERS & DOCUMENTS HANDLERS ---
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prodName || !prodPrice) return;
+    const selling = parseFloat(prodSellingPrice) || parseFloat(prodPrice) || 0;
+    const orderCost = parseFloat(prodOrderPrice) || 0;
+    if (!prodName || (!prodSellingPrice && !prodPrice)) return;
     
     if (prodEditId) {
       const updatedProducts = productsInventory.map(p => 
         p.id === prodEditId 
-          ? { ...p, name: prodName, description: prodDesc, category: prodCat, price: parseFloat(prodPrice) || 0, quantity: parseInt(prodQty, 10) || 0 }
+          ? { 
+              ...p, 
+              name: prodName, 
+              description: prodDesc, 
+              category: prodCat, 
+              price: selling, 
+              quantity: parseInt(prodQty, 10) || 0,
+              orderPrice: orderCost,
+              sellingPrice: selling
+            }
           : p
       );
       onUpdateData({ ...data, productsInventory: updatedProducts });
@@ -391,15 +413,17 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
         name: prodName,
         description: prodDesc,
         category: prodCat,
-        price: parseFloat(prodPrice) || 0,
+        price: selling,
         quantity: parseInt(prodQty, 10) || 0,
+        orderPrice: orderCost,
+        sellingPrice: selling,
         createdAt: new Date().toISOString()
       };
       onUpdateData({ ...data, productsInventory: [newProduct, ...productsInventory] });
     }
     
     setProdEditId(null);
-    setProdName(''); setProdDesc(''); setProdCat(''); setProdPrice(''); setProdQty('');
+    setProdName(''); setProdDesc(''); setProdCat(''); setProdPrice(''); setProdOrderPrice(''); setProdSellingPrice(''); setProdQty('');
     setIsProductModalOpen(false);
   };
   
@@ -415,6 +439,8 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
     setProdDesc(p.description || '');
     setProdCat(p.category || '');
     setProdPrice(p.price.toString());
+    setProdOrderPrice((p.orderPrice ?? 0).toString());
+    setProdSellingPrice((p.sellingPrice ?? p.price ?? 0).toString());
     setProdQty(p.quantity.toString());
     setIsProductModalOpen(true);
   };
@@ -574,6 +600,9 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
       const updatedTxs = [newSale, ...(data.businessTransactions || [])];
       
       onUpdateData({ ...data, businessDocuments: updatedDocs, businessTransactions: updatedTxs });
+      if (showToast) {
+        showToast('Invoice processed & logged as sales transaction');
+      }
     }
   };
   
@@ -1825,35 +1854,88 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
             {productsInventory.length === 0 ? (
               <div className="text-center py-10 text-slate-400 text-xs border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl">No products in inventory. Start by adding one.</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {productsInventory.map(p => (
-                  <div key={p.id} className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-blue-200 dark:hover:border-blue-900/50 transition bg-slate-50/50 dark:bg-slate-950/30">
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 pr-2">{p.name}</h4>
-                        <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider shrink-0">{p.category || 'General'}</span>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {productsInventory.map(p => {
+                    const sellPrice = p.sellingPrice ?? p.price ?? 0;
+                    const bCost = p.orderPrice ?? 0;
+                    const profitPerUnit = sellPrice - bCost;
+                    const totalProfitForStock = profitPerUnit * (p.quantity || 1);
+
+                    return (
+                      <div key={p.id} className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-blue-200 dark:hover:border-blue-900/50 transition bg-slate-50/50 dark:bg-slate-950/30">
+                        <div>
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-bold text-slate-800 dark:text-slate-100 pr-2">{p.name}</h4>
+                            <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider shrink-0">{p.category || 'General'}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mb-3 line-clamp-2">{p.description || 'No description provided'}</p>
+                          
+                          {/* Cost and Selling Breakdown */}
+                          <div className="bg-white dark:bg-slate-900/60 p-2.5 rounded-lg text-xs space-y-1 my-2.5 border border-slate-100 dark:border-slate-800">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Order Cost:</span>
+                              <span className="font-semibold text-slate-600 dark:text-slate-300 font-mono">{formatCurrency(bCost, currency)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Selling Price:</span>
+                              <span className="font-semibold text-slate-600 dark:text-slate-300 font-mono">{formatCurrency(sellPrice, currency)}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-slate-100 dark:border-slate-850 pt-1 mt-1 font-bold">
+                              <span className="text-slate-500">Unit Profit:</span>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-mono">{formatCurrency(profitPerUnit, currency)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/80">
+                          <div>
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Prominent Profit ({p.quantity || 1}x)</div>
+                            <div className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                              {formatCurrency(totalProfitForStock, currency)}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-medium">Stock/Qty: {p.quantity}</div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => handleEditProduct(p)} title="Edit Product" className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition cursor-pointer">
+                              <Edit2 size={14} />
+                            </button>
+                            <button type="button" onClick={() => handleExportProductPDF(p, 'share')} title="Share Info" className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition cursor-pointer">
+                              <Share2 size={14} />
+                            </button>
+                            <button type="button" onClick={() => handleDeleteProduct(p.id)} title="Delete Product" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition cursor-pointer">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500 mb-4 line-clamp-2">{p.description || 'No description provided'}</p>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom Total Banner for Products */}
+                {(() => {
+                  const totalOrderCost = productsInventory.reduce((sum, p) => sum + ((p.orderPrice ?? 0) * (p.quantity || 1)), 0);
+                  const totalSellingValue = productsInventory.reduce((sum, p) => sum + (((p.sellingPrice ?? p.price ?? 0)) * (p.quantity || 1)), 0);
+                  const totalGain = totalSellingValue - totalOrderCost;
+
+                  return (
+                    <div className="mt-6 p-5 bg-gradient-to-r from-blue-50/50 to-indigo-50/30 dark:from-slate-900/40 dark:to-indigo-950/20 border border-blue-105 dark:border-slate-800 rounded-2xl grid grid-cols-1 sm:grid-cols-3 gap-4 text-left shadow-sm">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Total Order Value (All Stored)</span>
+                        <span className="text-lg font-extrabold text-slate-800 dark:text-slate-200 font-mono">{formatCurrency(totalOrderCost, currency)}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Total List Selling Value</span>
+                        <span className="text-lg font-extrabold text-blue-600 dark:text-sky-400 font-mono">{formatCurrency(totalSellingValue, currency)}</span>
+                      </div>
+                      <div className="border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 sm:pl-5 pt-3 sm:pt-0 space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 block font-semibold ">Net Accumulated Profit</span>
+                        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">{formatCurrency(totalGain, currency)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/80">
-                      <div>
-                        <div className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatCurrency(p.price, currency)}</div>
-                        <div className="text-[10px] text-slate-400 font-medium">Stock/Qty: {p.quantity}</div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button type="button" onClick={() => handleEditProduct(p)} title="Edit Product" className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition cursor-pointer">
-                          <Edit2 size={14} />
-                        </button>
-                        <button type="button" onClick={() => handleExportProductPDF(p, 'share')} title="Share Info" className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition cursor-pointer">
-                          <Share2 size={14} />
-                        </button>
-                        <button type="button" onClick={() => handleDeleteProduct(p.id)} title="Delete Product" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition cursor-pointer">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -2396,13 +2478,20 @@ export default function BusinessSection({ data, onUpdateData, currency, theme }:
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Price</label>
-                  <input required type="number" step="any" min="0" value={prodPrice} onChange={e => setProdPrice(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" />
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Order Price</label>
+                  <input required type="number" step="any" min="0" value={prodOrderPrice} onChange={e => setProdOrderPrice(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="0.00" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Quantity/Stock</label>
-                  <input type="number" min="0" value={prodQty} onChange={e => setProdQty(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Optional" />
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Selling Price</label>
+                  <input required type="number" step="any" min="0" value={prodSellingPrice} onChange={e => {
+                    setProdSellingPrice(e.target.value);
+                    setProdPrice(e.target.value);
+                  }} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="0.00" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">Quantity/Stock</label>
+                <input type="number" min="0" value={prodQty} onChange={e => setProdQty(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 dark:text-slate-100" placeholder="Optional" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Category</label>

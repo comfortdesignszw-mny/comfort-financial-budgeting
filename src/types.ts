@@ -132,6 +132,8 @@ export interface BusinessProduct {
   price: number;
   quantity: number;
   createdAt: string;
+  orderPrice?: number;
+  sellingPrice?: number;
 }
 
 export interface BusinessCustomer {
@@ -180,6 +182,7 @@ export interface HREmployee {
   email: string;
   address: string;
   createdAt: string;
+  photo?: string;
 }
 
 export interface HRPayroll {
@@ -227,6 +230,20 @@ export interface BusinessProperty {
   dateLogged: string;
 }
 
+export interface LegalDocument {
+  id: string;
+  title: string;
+  type: string; // 'Contract of Employment' | 'Lease Agreement' | 'Loan Application' | 'Leave Form' | 'Affidavit' | 'Leave Application' | 'External'
+  status: string; // 'draft' | 'completed' | 'signed'
+  createdAt: string;
+  updatedAt: string;
+  content: string; // text representation
+  metadata: Record<string, string>; // Wizard inputs stored as KV
+  fileData?: string; // Base64 content of external upload
+  fileName?: string; // Native filename
+  fileSize?: string;
+}
+
 // Outer application state containing both Personal and Business configurations
 export interface AppData {
   profile: ProfileState;
@@ -252,4 +269,5 @@ export interface AppData {
   // Notetaker & Scheduler database
   notes?: FinancialNote[];
   events?: ScheduleEvent[];
+  legalDocs?: LegalDocument[];
 }

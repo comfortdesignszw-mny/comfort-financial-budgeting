@@ -20,6 +20,7 @@ import BusinessSection from './components/BusinessSection';
 import HRSection from './components/HRSection';
 import SchedulerSection from './components/SchedulerSection';
 import LocalNotificationsManager from './components/LocalNotificationsManager';
+import BusinessLegalDocs from './components/BusinessLegalDocs';
 import comfortLogo from './assets/images/comfort_logo_brand_1779617398401.png';
 
 export default function App() {
@@ -87,7 +88,7 @@ export default function App() {
   });
 
   // Active workspace section
-  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'hr' | 'scheduler' | 'profile'>('personal');
+  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'hr' | 'scheduler' | 'profile' | 'legal_docs'>('business');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Redirect to Scheduler space immediately if a shared schedule deep-link is opened
@@ -313,6 +314,21 @@ export default function App() {
   const handleUpdateData = (newData: AppData) => {
     setData(newData);
   };
+
+  const [toast, setToast] = useState<{ message: string } | null>(null);
+
+  const showToast = (message: string) => {
+    setToast({ message });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -615,8 +631,12 @@ export default function App() {
     ? 'Personal Section (Comfort Budgeting)' 
     : dataSpace === 'business' 
     ? 'Business Section (CashFlow Simple)' 
+    : dataSpace === 'hr'
+    ? 'Human Resources'
     : dataSpace === 'scheduler'
     ? 'Sandbox Calendar & Notes'
+    : dataSpace === 'legal_docs'
+    ? 'Business & Legal Documentation'
     : 'Universal Settings';
 
   const userInitials = data.profile.name
@@ -645,7 +665,7 @@ export default function App() {
             className="w-7 h-7 object-cover rounded-lg border border-teal-500/25 shadow-sm"
             referrerPolicy="no-referrer"
           />
-          <span className="font-extrabold text-[#0D9488] text-sm">Comfort Budgeting</span>
+          <span className="font-extrabold text-[#0D9488] text-xs">Comfort Finance Suite</span>
         </div>
         <div className="flex items-center gap-2.5">
           {/* Mobile Theme Toggle Button */}
@@ -699,10 +719,12 @@ export default function App() {
                 referrerPolicy="no-referrer"
               />
               <div>
-                <h2 className="font-extrabold text-teal-600 dark:text-teal-400 text-base leading-tight font-sans">
-                  Comfort Budgeting
+                <h2 className="font-black text-teal-600 dark:text-teal-400 text-sm leading-tight font-sans tracking-tight">
+                  Comfort Finance Suite
                 </h2>
-                <span className="text-[10px] text-slate-400 block tracking-wide">Financial Management</span>
+                <span className="text-[9px] text-slate-400 block leading-tight tracking-wide mt-0.5" title="A Unified Corporate and Personal Finance Engine">
+                  A Unified Corporate & Personal Finance Engine
+                </span>
               </div>
             </div>
             {/* Desktop Theme Toggle Button */}
@@ -720,6 +742,22 @@ export default function App() {
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-2 mb-2">Workspace Rooms</div>
             
             <button
+              onClick={() => { setDataSpace('business'); setIsMobileSidebarOpen(false); }}
+              className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
+                dataSpace === 'business'
+                  ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 ring-1 ring-green-500/20 shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <BadgeDollarSign size={18} className={dataSpace === 'business' ? 'text-green-500' : 'text-slate-400'} />
+              <div className="text-xs">
+                <span className="block font-bold">Business Section</span>
+                <span className="text-[9px] text-slate-400">Simple CashFlow</span>
+              </div>
+            </button>
+
+
+            <button
               onClick={() => { setDataSpace('personal'); setIsMobileSidebarOpen(false); }}
               className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
                 dataSpace === 'personal'
@@ -734,20 +772,6 @@ export default function App() {
               </div>
             </button>
 
-            <button
-              onClick={() => { setDataSpace('business'); setIsMobileSidebarOpen(false); }}
-              className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
-                dataSpace === 'business'
-                  ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 ring-1 ring-green-500/20 shadow-sm'
-                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <BadgeDollarSign size={18} className={dataSpace === 'business' ? 'text-green-500' : 'text-slate-400'} />
-              <div className="text-xs">
-                <span className="block font-bold">Business Section</span>
-                <span className="text-[9px] text-slate-400">CashFlow Simple</span>
-              </div>
-            </button>
 
             <button
               onClick={() => { setDataSpace('hr'); setIsMobileSidebarOpen(false); }}
@@ -764,6 +788,7 @@ export default function App() {
               </div>
             </button>
 
+
             <button
               onClick={() => { setDataSpace('scheduler'); setIsMobileSidebarOpen(false); }}
               className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
@@ -776,6 +801,21 @@ export default function App() {
               <div className="text-xs">
                 <span className="block font-bold">Notes & Scheduler</span>
                 <span className="text-[9px] text-slate-400">Sandbox Calendar Suite</span>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => { setDataSpace('legal_docs'); setIsMobileSidebarOpen(false); }}
+              className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
+                dataSpace === 'legal_docs'
+                  ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 ring-1 ring-purple-500/20 shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <Scale size={18} className={dataSpace === 'legal_docs' ? 'text-purple-500' : 'text-slate-400'} />
+              <div className="text-xs">
+                <span className="block font-bold">Business & Legal Docs</span>
+                <span className="text-[9px] text-slate-400 block mt-0.5">Business Documentation</span>
               </div>
             </button>
 
@@ -894,6 +934,7 @@ export default function App() {
               data={data}
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}
+              showToast={showToast}
             />
           )}
 
@@ -903,6 +944,7 @@ export default function App() {
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}
               theme={theme}
+              showToast={showToast}
             />
           )}
 
@@ -911,6 +953,7 @@ export default function App() {
               data={data}
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}
+              showToast={showToast}
             />
           )}
 
@@ -919,6 +962,15 @@ export default function App() {
               data={data}
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}
+            />
+          )}
+
+          {dataSpace === 'legal_docs' && (
+            <BusinessLegalDocs 
+              data={data}
+              onUpdateData={handleUpdateData}
+              currency={data.profile.currency}
+              showToast={showToast}
             />
           )}
 
@@ -1510,6 +1562,33 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Small floating Toast Notification for brief feedback */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 right-6 z-[99999] bg-slate-900 border border-slate-850/80 text-white shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3 max-w-sm pointer-events-auto"
+          >
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+              <Check size={14} className="stroke-[2.5]" />
+            </div>
+            <div className="flex-1 min-w-0 pr-1">
+              <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Sandbox Auto-Save</h5>
+              <p className="text-xs text-white font-semibold mt-1 leading-snug">{toast.message}</p>
+            </div>
+            <button 
+              onClick={() => setToast(null)}
+              className="p-1 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition cursor-pointer shrink-0"
+            >
+              <X size={12} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Dynamic PWA Mobile Install Guide Fallback Modal */}
       <AnimatePresence>
         {showInstallGuide && (
@@ -1736,6 +1815,24 @@ export default function App() {
                           Scheduler calendars, reminder associations, and custom formatted rich-text memos are provided for administrative convenience. Linking budget events with persistent note files is handled solely on the client-side. Users are responsible for their own backups.
                         </p>
                       </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-teal-500 font-mono">6.</span> HR & Staff Management System
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Payroll calculations, employee photo profiles, and consolidated staff statements are strictly processed in-browser. All information resides locally in sandboxed memory.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-teal-500 font-mono">7.</span> Document Wizards & File Archiving
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Dynamic templates (employment contracts, lease agreement forms, loans, affidavits) are compiled on the client. External file uploads are serialized locally in local state sandboxes.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-950/40 p-3 border border-slate-100 dark:border-slate-850/60 rounded-xl">
@@ -1793,6 +1890,24 @@ export default function App() {
                         </h4>
                         <p className="text-slate-500 dark:text-slate-400 pl-4">
                           Your formatted draft memos, checklists, chosen font styling parameters, calendar entries, and item linking keys reside completely in local browser-sandboxed files. We have zero ability or permission to view, store, or transmit your typed documents.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-emerald-500 font-mono">6.</span> Staff Photo Profiles & Identity Records
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Employee photos uploaded for creating identity ID badges are converted into a base64 string cached offline in the browser. No cloud upload handlers exist for employee metadata files.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5 mb-1">
+                          <span className="text-emerald-500 font-mono">7.</span> Archive Documentation Upload Control
+                        </h4>
+                        <p className="text-slate-500 dark:text-slate-400 pl-4">
+                          Any custom templates and external documents or business papers imported in the system are sandboxed contextually in your client workspace local storage. They remain strictly secure under your device custody.
                         </p>
                       </div>
                     </div>

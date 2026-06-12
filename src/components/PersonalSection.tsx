@@ -21,6 +21,7 @@ interface PersonalSectionProps {
   data: AppData;
   onUpdateData: (newData: AppData) => void;
   currency: CurrencyType;
+  showToast?: (message: string) => void;
 }
 
 export const personalExpenseCategories: { [key in PersonalExpenseCategory]: { icon: React.ReactNode; label: string; color: string; bg: string } } = {
@@ -43,7 +44,7 @@ export const personalIncomeCategories: { [key: string]: { icon: React.ReactNode;
   other: { icon: <Coins size={18} />, label: 'Other Earnings', color: '#64748B', bg: 'bg-slate-100 text-slate-700 dark:bg-slate-950/40 dark:text-slate-400' }
 };
 
-export default function PersonalSection({ data, onUpdateData, currency }: PersonalSectionProps) {
+export default function PersonalSection({ data, onUpdateData, currency, showToast }: PersonalSectionProps) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'income' | 'expenses' | 'budgets'>('dashboard');
   const [incomeFilter, setIncomeFilter] = useState<string>('all');
   const [expenseFilter, setExpenseFilter] = useState<string>('all');
@@ -171,6 +172,10 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
       ...data,
       transactions: [...generatedTxs, ...data.transactions]
     });
+
+    if (showToast) {
+      showToast(isRecurring ? 'Recurring entries successfully added to sandbox' : `${txModalType === 'income' ? 'Income' : 'Expense'} transaction recorded to sandbox`);
+    }
 
     setIsTxModalOpen(false);
   };
@@ -512,7 +517,7 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
                 <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1 uppercase tracking-wider text-center">Savings Target Achievement</div>
                 <div className="flex items-end gap-1 mb-2">
                    {(() => {
-                      const tgt = data.profile.savingsGoal > 0 ? data.profile.savingsGoal : 1;
+                      const tgt = data.profile.savingsTarget > 0 ? data.profile.savingsTarget : 1;
                       const net = Math.max(0, totalIncome - totalExpenses);
                       const pct = Math.min(100, Math.round((net / tgt) * 100));
                       return (
@@ -524,13 +529,13 @@ export default function PersonalSection({ data, onUpdateData, currency }: Person
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                   {(() => {
-                      const tgt = data.profile.savingsGoal > 0 ? data.profile.savingsGoal : 1;
+                      const tgt = data.profile.savingsTarget > 0 ? data.profile.savingsTarget : 1;
                       const net = Math.max(0, totalIncome - totalExpenses);
                       const pct = Math.min(100, Math.round((net / tgt) * 100));
                       return <div className="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }}></div>;
                   })()}
                 </div>
-                <div className="text-[10px] text-slate-400 mt-2 font-medium">Goal: {formatCurrency(data.profile.savingsGoal, currency)}</div>
+                <div className="text-[10px] text-slate-400 mt-2 font-medium">Goal: {formatCurrency(data.profile.savingsTarget, currency)}</div>
               </div>
             </div>
           </div>

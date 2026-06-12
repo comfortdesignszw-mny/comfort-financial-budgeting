@@ -9,6 +9,7 @@ import {
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { AppData, FinancialNote, ScheduleEvent, EventCategoryType } from '../types';
+import CurrencyDashboard from './CurrencyDashboard';
 
 const compressCategory = (cat: string): string => {
   switch (cat) {
@@ -38,7 +39,7 @@ interface SchedulerSectionProps {
 
 export default function SchedulerSection({ data, onUpdateData, currency }: SchedulerSectionProps) {
   // Tabs within this workspace room
-  const [activeTab, setActiveTab] = useState<'notes' | 'scheduler'>('notes');
+  const [activeTab, setActiveTab] = useState<'notes' | 'scheduler' | 'currencies'>('notes');
 
   // Load safe lists
   const notesList = useMemo(() => data.notes || [], [data.notes]);
@@ -818,6 +819,17 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
         >
           <CalendarIcon size={14} />
           <span>Scheduler & Calendar ({eventsList.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('currencies')}
+          className={`px-5 py-3 text-xs font-bold transition duration-200 border-b-2 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'currencies'
+              ? 'border-teal-500 text-teal-650 dark:text-teal-400 font-extrabold'
+              : 'border-transparent text-slate-400 hover:text-slate-650 dark:hover:text-slate-200'
+          }`}
+        >
+          <Sparkles size={14} className="text-amber-500 animate-pulse" />
+          <span>Currency Exchange Rates</span>
         </button>
       </div>
 
@@ -1641,6 +1653,13 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* CURRENCY EXCHANGE RATES DASHBOARD */}
+      {activeTab === 'currencies' && (
+        <div className="p-1 sm:p-5">
+          <CurrencyDashboard appCurrency={currency} />
         </div>
       )}
 
