@@ -75,13 +75,22 @@ export default function BusinessLegalDocs({ data, onUpdateData, currency, showTo
     const initialValues: Record<string, string> = {};
     if (templateId === 'Contract of Employment') {
       initialValues.companyName = data.profile.companyName || data.profile.name || 'Comfort Finance Ltd';
+      initialValues.employerPhysicalAddress = '';
       initialValues.employeeName = '';
+      initialValues.employeeIDNumber = '';
+      initialValues.employeeAddress = '';
+      initialValues.employmentType = 'Permanent';
+      initialValues.department = '';
       initialValues.jobTitle = '';
       initialValues.baseSalary = '1200';
       initialValues.currency = currency || 'USD';
       initialValues.commencementDate = new Date().toISOString().split('T')[0];
+      initialValues.endDate = '';
       initialValues.term = 'Indefinite';
       initialValues.noticePeriod = '1 Month';
+      initialValues.employeeWitnessName = '';
+      initialValues.includeLetterhead = 'true';
+      initialValues.letterheadText = (data.profile.companyName || 'Comfort Finance Ltd').toUpperCase() + ' - HEAD OFFICE LETTERHEAD';
     } else if (templateId === 'Lease Agreement Forms') {
       initialValues.landlord = data.profile.companyName || data.profile.name || 'Lessor Corp';
       initialValues.tenant = '';
@@ -127,22 +136,38 @@ export default function BusinessLegalDocs({ data, onUpdateData, currency, showTo
   // Generate complete text template preview dynamically
   const compileTemplateContent = (type: string, meta: Record<string, string>): string => {
     switch (type) {
-      case 'Contract of Employment':
-        return `CONTRACT OF EMPLOYMENT
+      case 'Contract of Employment': {
+        const letterhead = meta.includeLetterhead !== 'false'
+          ? `========================================================================
+${(meta.letterheadText || 'COMFORT FINANCE LTD - HR OFFICE').toUpperCase()}
+========================================================================\n\n`
+          : '';
+
+        const addressBlock = `Employer: ${meta.companyName || '[Employer Company Name]'}
+Employer Address: ${meta.employerPhysicalAddress || 'Company Registered Address'}
+Department: ${meta.department || 'N/A'}`;
+
+        const employeeBlock = `Employee: ${meta.employeeName || '[Employee Full Name]'}
+Employee ID Number: ${meta.employeeIDNumber || '[Employee ID Number]'}
+Residential Address: ${meta.employeeAddress || '[Employee Address]'}`;
+
+        const termAndCommencement = meta.employmentType === 'Permanent'
+          ? `This agreement starts on ${meta.commencementDate || '[Start Date]'} on a Permanent (indefinite basis), subject to notice provisions below.`
+          : `This agreement is a ${meta.employmentType || 'Fixed term contract'} of employment. It starts on ${meta.commencementDate || '[Start Date]'} and runs until the scheduled End Date of ${meta.endDate || '[End Date]'}, unless terminated earlier in terms of this contract.`;
+
+        return `${letterhead}CONTRACT OF EMPLOYMENT
 
 BETWEEN:
-Employer: ${meta.companyName || '[Employer Company Name]'}
-Address: ${data.profile.companyEmail || 'Company Registered Address'}
+${addressBlock}
 
 AND:
-Employee: ${meta.employeeName || '[Employee Full Name]'}
-Position: ${meta.jobTitle || '[Job Position/Title]'}
+${employeeBlock}
 
 1. COMMENCEMENT AND TERM
-This agreement starts on ${meta.commencementDate || '[Start Date]'} and shall continue on ${meta.term || 'Indefinite'} basis, subject to notice provisions below.
+${termAndCommencement}
 
 2. REMUNERATION & POSITION
-The Employee is hired as ${meta.jobTitle || '[Position]'} with initial basic salary of ${meta.baseSalary || '0'} ${meta.currency || 'USD'} per calendar month. This is calculated with floating-point math protection at sandbox levels.
+The Employee is hired as ${meta.jobTitle || '[Position]'} with initial basic salary of ${meta.baseSalary || '0'} ${meta.currency || 'USD'} per calendar month. Any additional earnings or payments, like overtime, incentives, bonuses, etc., are as a result of the employer's consentual approval first. Deductions and taxes are applied following the labour laws of the land.
 
 3. NOTICE PERIOD
 Notice required by either party to terminate this contract is ${meta.noticePeriod || '1 Month'} in writing.
@@ -156,7 +181,11 @@ _____________________________
 For Employer: ${meta.companyName}
 
 _____________________________
-Employee: ${meta.employeeName}`;
+Employee: ${meta.employeeName}
+
+_____________________________
+Witness on behalf of Employee: ${meta.employeeWitnessName || '[Witness Full Name]'}`;
+      }
 
       case 'Lease Agreement Forms':
         return `COMMERCIAL & RESIDENTIAL LEASE AGREEMENT
@@ -733,29 +762,91 @@ Commissioner of Oaths (Rubber Seal)`;
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {selectedTemplate === 'Contract of Employment' && (
                       <>
+                        {/* Company / Employer Information */}
                         <div className="space-y-1 text-xs">
                           <label className="font-bold text-slate-500 uppercase tracking-wider block">Employer Company Name</label>
                           <input type="text" value={formValues.companyName || ''} onChange={e => setFormValues({...formValues, companyName: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" />
                         </div>
                         <div className="space-y-1 text-xs">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Employer's Physical Address</label>
+                          <input type="text" value={formValues.employerPhysicalAddress || ''} onChange={e => setFormValues({...formValues, employerPhysicalAddress: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" placeholder="e.g. 100 Innovation Way, Harare" />
+                        </div>
+                        <div className="space-y-1 text-xs">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Company Department</label>
+                          <input type="text" value={formValues.department || ''} onChange={e => setFormValues({...formValues, department: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" placeholder="e.g. Finance & Accounting" />
+                        </div>
+
+                        {/* Letterhead & Branding options */}
+                        <div className="space-y-1 text-xs">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Company Brand / Letterhead</label>
+                          <select value={formValues.includeLetterhead || 'true'} onChange={e => setFormValues({...formValues, includeLetterhead: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-xs text-slate-850 dark:text-white">
+                            <option value="true">Include Company Brand Letterhead</option>
+                            <option value="false">No Letterhead (Plain Text)</option>
+                          </select>
+                        </div>
+
+                        {formValues.includeLetterhead !== 'false' && (
+                          <div className="space-y-1 text-xs sm:col-span-2">
+                            <label className="font-bold text-slate-500 uppercase tracking-wider block">Brand Letterhead Text</label>
+                            <input type="text" value={formValues.letterheadText || ''} onChange={e => setFormValues({...formValues, letterheadText: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" placeholder="e.g. COMFORT FINANCE LTD - PRIVATE SUITE STATEMENT" />
+                          </div>
+                        )}
+
+                        {/* Employee Information */}
+                        <div className="space-y-1 text-xs">
                           <label className="font-bold text-slate-500 uppercase tracking-wider block">Employee Full Name</label>
                           <input type="text" value={formValues.employeeName || ''} onChange={e => setFormValues({...formValues, employeeName: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" required />
                         </div>
+                        <div className="space-y-1 text-xs">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Employee ID / Passport Number</label>
+                          <input type="text" value={formValues.employeeIDNumber || ''} onChange={e => setFormValues({...formValues, employeeIDNumber: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" placeholder="e.g. 63-128456-X-24" />
+                        </div>
+                        <div className="space-y-1 text-xs sm:col-span-2">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Employee's Residential Address</label>
+                          <input type="text" value={formValues.employeeAddress || ''} onChange={e => setFormValues({...formValues, employeeAddress: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" placeholder="e.g. Flat 4, Greenfield Gardens, Harare" />
+                        </div>
+
+                        {/* Position & Type of Employment */}
                         <div className="space-y-1 text-xs">
                           <label className="font-bold text-slate-500 uppercase tracking-wider block">Hiring Job Title</label>
                           <input type="text" value={formValues.jobTitle || ''} onChange={e => setFormValues({...formValues, jobTitle: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" />
                         </div>
                         <div className="space-y-1 text-xs">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Type of Employment</label>
+                          <select value={formValues.employmentType || 'Permanent'} onChange={e => setFormValues({...formValues, employmentType: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-xs text-slate-850 dark:text-white">
+                            <option value="Permanent">Permanent</option>
+                            <option value="Fixed term contract">Fixed term contract</option>
+                            <option value="Casual">Casual</option>
+                          </select>
+                        </div>
+
+                        {/* Dates */}
+                        <div className="space-y-1 text-xs">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Commencement Date</label>
+                          <input type="date" value={formValues.commencementDate || ''} onChange={e => setFormValues({...formValues, commencementDate: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" />
+                        </div>
+
+                        {(formValues.employmentType === 'Fixed term contract' || formValues.employmentType === 'Casual') && (
+                          <div className="space-y-1 text-xs animate-in fade-in duration-200">
+                            <label className="font-bold text-pink-600 block uppercase tracking-wider">Scheduled End Date</label>
+                            <input type="date" value={formValues.endDate || ''} onChange={e => setFormValues({...formValues, endDate: e.target.value})} className="w-full px-3 py-2 border border-pink-300 dark:border-pink-900 rounded-xl bg-slate-50/50 dark:text-white" required />
+                          </div>
+                        )}
+
+                        {/* Remuneration Info */}
+                        <div className="space-y-1 text-xs">
                           <label className="font-bold text-slate-500 uppercase tracking-wider block">Base Monthly Salary</label>
                           <input type="number" value={formValues.baseSalary || ''} onChange={e => setFormValues({...formValues, baseSalary: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" />
                         </div>
                         <div className="space-y-1 text-xs">
-                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Salary currency</label>
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Salary Currency</label>
                           <input type="text" value={formValues.currency || ''} onChange={e => setFormValues({...formValues, currency: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" />
                         </div>
-                        <div className="space-y-1 text-xs">
-                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Commencement Date</label>
-                          <input type="date" value={formValues.commencementDate || ''} onChange={e => setFormValues({...formValues, commencementDate: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" />
+
+                        {/* Signing Witnesses */}
+                        <div className="space-y-1 text-xs sm:col-span-2">
+                          <label className="font-bold text-slate-500 uppercase tracking-wider block">Employee Signing Witness Full Name</label>
+                          <input type="text" value={formValues.employeeWitnessName || ''} onChange={e => setFormValues({...formValues, employeeWitnessName: e.target.value})} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:text-white" placeholder="e.g. Johnathan Witness, CPA" required />
                         </div>
                       </>
                     )}
