@@ -454,7 +454,7 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
       doc.setFont('helvetica', 'oblique');
       doc.setFontSize(9);
       doc.setTextColor(148, 163, 184);
-      doc.text('Comfort Budgeting Suite — Saved Securely in Local Client Sandbox', 14, 287);
+      doc.text('Comfort Finance Suite — Saved Securely in Local Client Sandbox', 14, 287);
       
       doc.save(`${note.title.toLowerCase().replace(/\s+/g, '_')}.pdf`);
       triggerFeedback('PDF Report generated and downloaded!');
@@ -468,7 +468,7 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
     try {
       const paragraphs = [
         new Paragraph({
-          text: 'Comfort Budgeting System',
+          text: 'Comfort Finance Suite',
           heading: HeadingLevel.HEADING_2,
         }),
         new Paragraph({
@@ -646,7 +646,7 @@ export default function SchedulerSection({ data, onUpdateData, currency }: Sched
       if (navigator.share) {
         navigator.share({
           title: `Schedule: ${ev.title}`,
-          text: `Join event on Comfort Budgeting ${ev.date} at ${ev.time}`,
+          text: `Join event on Comfort Finance Suite ${ev.date} at ${ev.time}`,
           url: shareUrl
         }).catch(() => {});
       } else {

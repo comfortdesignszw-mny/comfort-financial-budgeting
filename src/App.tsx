@@ -196,7 +196,7 @@ export default function App() {
       
       setNotification({
         title: 'Native Companion App Ready 📱',
-        message: 'Comfort Budgeting can now be installed directly on your device. Click "Install Mobile App" in the sidebar for single-tap download!',
+        message: 'Comfort Finance Suite can now be installed directly on your device. Click "Install Mobile App" in the sidebar for single-tap download!',
         type: 'info'
       });
     };
@@ -209,7 +209,7 @@ export default function App() {
       
       setNotification({
         title: 'App Installed! 🎉',
-        message: 'Thank you for installing Comfort Budgeting! It is now accessible directly from your application launcher or home screen.',
+        message: 'Thank you for installing Comfort Finance Suite! It is now accessible directly from your application launcher or home screen.',
         type: 'success'
       });
     };
@@ -482,7 +482,7 @@ export default function App() {
           await navigator.share({
             files: [file],
             title: `${compName} Backup`,
-            text: 'Comfort Financial Budgeting Backup File',
+            text: 'Comfort Finance Suite Backup File',
           });
           setNotification({
             title: 'Backup Created Successfully',
@@ -631,7 +631,7 @@ export default function App() {
   };
 
   const activeSpaceName = dataSpace === 'personal' 
-    ? 'Personal Section (Comfort Budgeting)' 
+    ? 'Personal Section (Comfort Finance Suite)' 
     : dataSpace === 'business' 
     ? 'Business Section (CashFlow Simple)' 
     : dataSpace === 'hr'
@@ -664,7 +664,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           <img
             src={comfortLogo}
-            alt="Comfort Financial Budgeting logo"
+            alt="Comfort Finance Suite logo"
             className="w-7 h-7 object-cover rounded-lg border border-teal-500/25 shadow-sm"
             referrerPolicy="no-referrer"
           />
@@ -771,7 +771,7 @@ export default function App() {
               <CheckCircle size={18} className={dataSpace === 'personal' ? 'text-teal-500' : 'text-slate-400'} />
               <div className="text-xs">
                 <span className="block font-bold">Personal Section</span>
-                <span className="text-[9px] text-slate-400">Comfort Budgeting</span>
+                <span className="text-[9px] text-slate-400">Comfort Finance Suite</span>
               </div>
             </button>
 
@@ -907,17 +907,17 @@ export default function App() {
             <div className="flex items-center gap-4">
               <img
                 src={comfortLogo}
-                alt="Comfort Financial Budgeting Logo"
+                alt="Comfort Finance Suite Logo"
                 className="hidden md:block w-14 h-14 object-cover rounded-2xl border border-teal-500/10 shadow-sm"
                 referrerPolicy="no-referrer"
               />
               <div>
-                <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest block mb-1">Comfort Financial Budgeting</span>
+                <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest block mb-1">Comfort Finance Suite</span>
                 <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 font-sans tracking-tight">
                   {activeSpaceName}
                 </h1>
                 <p className="text-xs text-slate-400 mt-1">
-                  A Business and Personal Financial Management Solution
+                  A Unified Corporate and Personal Finance Engine
                 </p>
               </div>
             </div>
@@ -997,7 +997,7 @@ export default function App() {
                     Universal Brand Identity Asset
                   </span>
                   <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-base leading-snug">
-                    Comfort Financial Budgeting Logo Image
+                    Comfort Finance Suite Logo Image
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
                     This official brand logo image is integrated into all system dimensions, driving the <strong>Web App Favicon</strong>, <strong>Mobile / Desktop PWA homescreen launchers</strong>, and dynamic <strong>Social Share previews (OpenGraph metadata)</strong> to maintain corporate visibility across platforms.
@@ -1458,10 +1458,10 @@ export default function App() {
                 />
                 <div>
                   <h4 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs tracking-tight font-sans">
-                    Comfort Financial Budgeting
+                    Comfort Finance Suite
                   </h4>
                   <p className="text-[10px] text-slate-405 dark:text-slate-400">
-                    A Unified Corporate & Personal Finance Engine
+                    A Unified Corporate and Personal Finance Engine
                   </p>
                 </div>
               </div>
@@ -1482,7 +1482,7 @@ export default function App() {
 
             <div className="border-t border-slate-100 dark:border-slate-900/60 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left text-slate-450 dark:text-slate-500 text-xs font-sans">
               <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 font-medium">
-                <p>&copy; 2026 Comfort Financial Budgeting. All rights reserved.</p>
+                <p>&copy; 2026 Comfort Finance Suite. All rights reserved.</p>
                 <div className="flex items-center gap-3">
                   <span className="hidden sm:inline text-slate-300 dark:text-slate-800">•</span>
                   <button 
@@ -1686,7 +1686,7 @@ export default function App() {
               {/* Instructions List */}
               <div className="py-4 space-y-4 overflow-y-auto text-xs text-slate-650 dark:text-slate-350">
                 <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed text-[11px] font-sans">
-                  Comfort Budgeting is custom customized for your environment. Install it in seconds to unlock full-screen viewports, quick long-press workspace shortcuts, and total offline readiness.
+                  Comfort Finance Suite is customized for your environment. Install it in seconds to unlock full-screen viewports, quick long-press workspace shortcuts, and total offline readiness.
                 </p>
 
                 <div className="space-y-3.5 pt-1">
@@ -1742,7 +1742,7 @@ export default function App() {
                     </span>
                     <ol className="list-decimal pl-4.5 space-y-1 text-[11px] font-medium leading-relaxed">
                       <li>Look at the browser's right-hand address bar for the <strong className="text-teal-700 dark:text-teal-400 font-bold">"Install App" icon</strong> (monitor with down-arrow).</li>
-                      <li>Alternatively, click the top-right menu and choose <strong className="text-teal-600 dark:text-teal-400 font-bold">"Install Comfort Budgeting"</strong>.</li>
+                      <li>Alternatively, click the top-right menu and choose <strong className="text-teal-600 dark:text-teal-400 font-bold">"Install Comfort Finance Suite"</strong>.</li>
                     </ol>
                   </div>
                 </div>
@@ -1819,7 +1819,7 @@ export default function App() {
                 {activeLegalModal === 'tos' ? (
                   <>
                     <p className="font-bold text-slate-800 dark:text-slate-150">
-                      Welcome to Comfort Financial Budgeting. Please read this summary of our Terms of Service before using the platform.
+                      Welcome to Comfort Finance Suite. Please read this summary of our Terms of Service before using the platform.
                     </p>
                     
                     <div className="space-y-3">
@@ -1966,7 +1966,7 @@ export default function App() {
 
                     <div className="bg-slate-50 dark:bg-slate-950/40 p-3 border border-slate-100 dark:border-slate-850/60 rounded-xl">
                       <p className="text-[10px] text-slate-500 dark:text-slate-450 leading-normal">
-                        Privacy is the fundamental cornerstone of Comfort Financial Budgeting. Rest easy knowing that you dictate exactly where your data is stored.
+                        Privacy is the fundamental cornerstone of Comfort Finance Suite. Rest easy knowing that you dictate exactly where your data is stored.
                       </p>
                     </div>
                   </>

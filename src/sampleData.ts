@@ -25,7 +25,7 @@ export const initialSampleData: AppData = {
   notes: [
     {
       id: 'default-note-1',
-      title: 'Comfort Budgeting Welcome Memo',
+      title: 'Comfort Finance Suite Welcome Memo',
       content: `# Welcome to Comfort Notes!\n\nThis is a responsive, **offline-first text editor** optimized for personal budgeting notes and investment analysis.\n\n### Features:\n* Supports **Markdown** previews.\n* Local-first automated drafts saving instantly.\n* Portable exports as **PDF**, **Word**, and **TXT** files.\n* Links notes directly to scheduling cards on your calendar!\n\nUse this space for outlining business expenses or jotting down personal purchase targets.`,
       createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
