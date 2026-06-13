@@ -3,7 +3,8 @@ import {
   ArrowDownCircle, ArrowUpCircle, Shield, HelpCircle, Flame, 
   Layers, Package, Building, Users, Trash2, Calendar, 
   Plus, DollarSign, PenTool, CheckSquare, Square, FileCheck, ArrowRight, Eye, Info, X,
-  FileSpreadsheet, FileText, Utensils, Car, Download, Share2, Edit2, Warehouse, Activity
+  FileSpreadsheet, FileText, Utensils, Car, Download, Share2, Edit2, Warehouse, Activity,
+  Clock, TrendingUp, Percent, BarChart3, AlertCircle
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { 
@@ -100,6 +101,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
   const businessDocuments = data.businessDocuments || [];
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'investment' | 'reportCard' | 'inventory' | 'customers' | 'documents' | 'stock-and-property'>('dashboard');
+  const [performanceInterval, setPerformanceInterval] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
   const [txFilter, setTxFilter] = useState<'all' | 'sales' | 'expenses'>('all');
   const [txSearch, setTxSearch] = useState('');
   
@@ -1358,64 +1360,328 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
 
-          {/* Monthly Performance Card */}
+          {/* Interval Financial Performance & Profits Analysis Card */}
           {(() => {
              const d = new Date();
-             const currentYear = d.getFullYear();
-             const currentMonth = d.getMonth();
              
-             const currentMonthTx = businessTransactions.filter(t => {
-                const txD = new Date(t.date);
-                return txD.getFullYear() === currentYear && txD.getMonth() === currentMonth;
-             });
+             // Base Date/Time utility formatting to strictly align local timezone
+             const getFormattedDate = (dateObj: Date) => {
+               const y = dateObj.getFullYear();
+               const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+               const day = String(dateObj.getDate()).padStart(2, '0');
+               return `${y}-${m}-${day}`;
+             };
 
+             const todayStr = getFormattedDate(d);
+
+             // 1. Daily Calculations (Today only)
+             const todayTx = businessTransactions.filter(t => t.date === todayStr);
+             const dSales = todayTx.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+             const dExpenses = todayTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+             const dNet = dSales - dExpenses;
+
+             // 2. Weekly Calculations (Past 7 Days inclusive of today)
+             const weekStart = new Date();
+             weekStart.setDate(weekStart.getDate() - 6);
+             const wStartStr = getFormattedDate(weekStart);
+             const weekTx = businessTransactions.filter(t => t.date >= wStartStr && t.date <= todayStr);
+             const wSales = weekTx.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+             const wExpenses = weekTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+             const wNet = wSales - wExpenses;
+
+             // 3. Monthly Calculations (Current Calendar Month)
+             const currentMonthTx = businessTransactions.filter(t => {
+                const parts = t.date.split('-');
+                if (parts.length < 2) return false;
+                const txYear = parseInt(parts[0], 10);
+                const txMonth = parseInt(parts[1], 10);
+                return txYear === d.getFullYear() && txMonth === (d.getMonth() + 1);
+             });
              const mSales = currentMonthTx.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
              const mExpenses = currentMonthTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-             const net = Math.max(0, mSales - mExpenses);
-             const tgt = mSales > 0 ? mSales : 1;
-             const pct = Math.min(100, Math.round((net / tgt) * 100));
+             const mNet = mSales - mExpenses;
+
+             // Dynamic Chart Datasets
+             const dailyChartData = Array.from({ length: 7 }, (_, i) => {
+               const curr = new Date();
+               curr.setDate(curr.getDate() - (6 - i));
+               const currStr = getFormattedDate(curr);
+               const dayTransactions = businessTransactions.filter(t => t.date === currStr);
+               const s = dayTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+               const e = dayTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+               const n = s - e;
+               const label = curr.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+               return { name: label, Revenue: s, Expenses: e, Profit: n };
+             });
+
+             const weeklyChartData = Array.from({ length: 4 }, (_, i) => {
+               const endPoint = new Date();
+               endPoint.setDate(endPoint.getDate() - (3 - i) * 7);
+               const startPoint = new Date();
+               startPoint.setDate(startPoint.getDate() - (3 - i) * 7 - 6);
+               const sStr = getFormattedDate(startPoint);
+               const eStr = getFormattedDate(endPoint);
+               const rangeTx = businessTransactions.filter(t => t.date >= sStr && t.date <= eStr);
+               const s = rangeTx.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+               const e = rangeTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+               const n = s - e;
+               const label = `Wk ${i + 1}`;
+               return { name: label, Revenue: s, Expenses: e, Profit: n };
+             });
+
+             const monthlyChartData = Array.from({ length: 6 }, (_, i) => {
+               const curr = new Date();
+               curr.setMonth(curr.getMonth() - (5 - i));
+               const yr = curr.getFullYear();
+               const mo = curr.getMonth() + 1;
+               const monthTransactions = businessTransactions.filter(t => {
+                 const parts = t.date.split('-');
+                 if (parts.length < 2) return false;
+                 return parseInt(parts[0], 10) === yr && parseInt(parts[1], 10) === mo;
+               });
+               const s = monthTransactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.amount, 0);
+               const e = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+               const n = s - e;
+               const label = curr.toLocaleDateString(undefined, { month: 'short' });
+               return { name: label, Revenue: s, Expenses: e, Profit: n };
+             });
+
+             // State-Driven assignment
+             const activeSales = performanceInterval === 'daily' ? dSales : performanceInterval === 'weekly' ? wSales : mSales;
+             const activeExpenses = performanceInterval === 'daily' ? dExpenses : performanceInterval === 'weekly' ? wExpenses : mExpenses;
+             const activeNet = performanceInterval === 'daily' ? dNet : performanceInterval === 'weekly' ? wNet : mNet;
+             const activeChartData = performanceInterval === 'daily' ? dailyChartData : performanceInterval === 'weekly' ? weeklyChartData : monthlyChartData;
+             
+             // Safe Net Profit Margin
+             const denominator = activeSales > 0 ? activeSales : 1;
+             const netMarginPct = Math.round((activeNet / denominator) * 100);
+             const netMarginClamped = Math.min(100, Math.max(0, netMarginPct));
+
+             // Custom interval-based feedback messages
+             let pulseFeedback = { title: "Steady Trading State", desc: "Keep tracking current sales & overhead expenses.", color: "text-blue-600 dark:text-blue-400" };
+             if (activeNet > 0) {
+               if (netMarginPct > 25) {
+                 pulseFeedback = { title: "High Operating Margin Status", desc: "Outstanding retention! Your operations are highly cost-efficient.", color: "text-emerald-600 dark:text-emerald-400" };
+               } else {
+                 pulseFeedback = { title: "Healthy Retained Earnings", desc: "Positive cash flow. Maintain current budget thresholds and expand pipelines.", color: "text-indigo-600 dark:text-indigo-400" };
+               }
+             } else if (activeNet < 0) {
+               pulseFeedback = { title: "Operating Deceleration Risk", desc: "Outflows exceed incoming cash flow. Review material costs, and reduce casual expenses immediately.", color: "text-rose-500 dark:text-rose-400" };
+             }
 
              return (
-               <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-                 <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 animate-pulse"></div>
-                 <div className="flex items-center gap-3 mb-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-                   <div className="p-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 rounded-lg">
-                     <Activity size={20} />
+               <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden space-y-6">
+                 {/* Top header decoration band */}
+                 <div className="absolute top-0 left-0 w-full h-[5px] bg-gradient-to-r from-teal-500 via-indigo-500 to-purple-600"></div>
+
+                 {/* Top Controls Layout */}
+                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-850 pb-5">
+                   <div className="space-y-1">
+                     <div className="flex items-center gap-2">
+                       <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                         <BarChart3 size={18} />
+                       </div>
+                       <h3 className="font-extrabold text-slate-850 dark:text-slate-100 text-base tracking-tight">Financial Performance Analysis</h3>
+                     </div>
+                     <p className="text-xs text-slate-400">Track and reflect on sales inflows, operational expenses, and net profit margins across active intervals.</p>
                    </div>
-                   <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-base">Monthly Performance</h3>
+                   
+                   {/* Switcher Tabs */}
+                   <div className="flex bg-slate-100/80 dark:bg-slate-950 p-1 rounded-2xl border border-slate-200/40 dark:border-slate-800 w-full lg:w-auto self-start shrink-0">
+                     <button
+                       onClick={() => setPerformanceInterval('daily')}
+                       className={`flex-1 lg:flex-none px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 cursor-pointer ${
+                         performanceInterval === 'daily'
+                           ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/10'
+                           : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
+                       }`}
+                     >
+                       <div className="flex items-center justify-center gap-1.5">
+                         <Clock size={11} />
+                         <span>Daily</span>
+                       </div>
+                     </button>
+                     <button
+                       onClick={() => setPerformanceInterval('weekly')}
+                       className={`flex-1 lg:flex-none px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 cursor-pointer ${
+                         performanceInterval === 'weekly'
+                           ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/10'
+                           : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
+                       }`}
+                     >
+                       <div className="flex items-center justify-center gap-1.5">
+                         <Calendar size={11} />
+                         <span>Weekly</span>
+                       </div>
+                     </button>
+                     <button
+                       onClick={() => setPerformanceInterval('monthly')}
+                       className={`flex-1 lg:flex-none px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 cursor-pointer ${
+                         performanceInterval === 'monthly'
+                           ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/10'
+                           : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
+                       }`}
+                     >
+                       <div className="flex items-center justify-center gap-1.5">
+                         <Activity size={11} />
+                         <span>Monthly</span>
+                       </div>
+                     </button>
+                   </div>
                  </div>
-                 
-                 <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                   <div className="w-full md:w-1/2">
-                     <div className="flex justify-between text-sm mb-2 font-medium">
-                       <span className="text-slate-500 dark:text-slate-400">Total Monthly Revenue</span>
-                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCurrency(mSales, currency)}</span>
+
+                 {/* Visual Buckets of Sales, Expenses, and Net Profits */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   {/* Sales Card Bucket */}
+                   <div className="bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex flex-col justify-between transition hover:shadow-sm">
+                     <div className="flex items-center justify-between mb-2">
+                       <span className="text-[10px] uppercase font-bold tracking-widest text-slate-450">Cash Earned (Sales)</span>
+                       <div className="p-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-lg">
+                         <ArrowDownCircle size={15} />
+                       </div>
                      </div>
-                     <div className="flex justify-between text-sm mb-2 font-medium">
-                       <span className="text-slate-500 dark:text-slate-400">Total Monthly Expenses</span>
-                       <span className="text-red-500 dark:text-red-400 font-bold">{formatCurrency(mExpenses, currency)}</span>
-                     </div>
-                     <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 my-3"></div>
-                     <div className="flex justify-between text-sm font-extrabold uppercase tracking-widest">
-                       <span className="text-slate-800 dark:text-slate-200">Net Profit</span>
-                       <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(Math.max(0, mSales - mExpenses), currency)}</span>
+                     <div className="mt-2">
+                       <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight select-all">
+                         {formatCurrency(activeSales, currency)}
+                       </span>
+                       <div className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider">
+                         {performanceInterval === 'daily' ? "Today's dynamic sales" : performanceInterval === 'weekly' ? "Inflows over past 7 days" : "Current calendar month revenue"}
+                       </div>
                      </div>
                    </div>
 
-                   <div className="w-full md:w-1/2 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center">
-                     <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1 uppercase tracking-wider text-center">Net Margin vs Revenue</div>
-                     <div className="flex items-end gap-1 mb-2">
-                        <span className="text-4xl font-black text-indigo-600 dark:text-indigo-400">{pct}%</span>
+                   {/* Expenses Card Bucket */}
+                   <div className="bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex flex-col justify-between transition hover:shadow-sm">
+                     <div className="flex items-center justify-between mb-2">
+                       <span className="text-[10px] uppercase font-bold tracking-widest text-slate-450">Cash Spent (Expenses)</span>
+                       <div className="p-1.5 bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 rounded-lg">
+                         <ArrowUpCircle size={15} />
+                       </div>
                      </div>
-                     <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                       <div className="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }}></div>
+                     <div className="mt-2">
+                       <span className="text-2xl font-black text-rose-500 dark:text-rose-400 tracking-tight select-all">
+                         {formatCurrency(activeExpenses, currency)}
+                       </span>
+                       <div className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider">
+                         {performanceInterval === 'daily' ? "Today's standard outflow" : performanceInterval === 'weekly' ? "Costs over past 7 days" : "Current calendar month bills & materials"}
+                       </div>
                      </div>
-                     <div className="text-[10px] text-slate-400 mt-2 font-medium">Retained earnings percentage</div>
+                   </div>
+
+                   {/* Net Profits/Loss Card Bucket */}
+                   <div className={`rounded-2xl p-5 border flex flex-col justify-between transition hover:shadow-sm ${
+                     activeNet >= 0 
+                       ? 'bg-indigo-50/20 dark:bg-indigo-950/5 border-indigo-100/70 dark:border-indigo-900/40' 
+                       : 'bg-rose-50/10 dark:bg-rose-950/5 border-rose-100/60 dark:border-rose-900/30'
+                     }`}
+                   >
+                     <div className="flex items-center justify-between mb-2">
+                       <span className="text-[10px] uppercase font-bold tracking-widest text-slate-450">Net Profits / Loss</span>
+                       <div className={`p-1 px-2.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                         activeNet >= 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400' : 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400'
+                       }`}>
+                         {activeNet >= 0 ? "Gain" : "Deficit"}
+                       </div>
+                     </div>
+                     <div className="mt-2">
+                       <span className={`text-2xl font-black tracking-tight select-all ${activeNet >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                         {activeNet < 0 ? '-' : ''}{formatCurrency(Math.abs(activeNet), currency)}
+                       </span>
+                       <div className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider">
+                         Sales minus overall expenses
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Interactive Recharts Line Graph and Retention Progress section */}
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                   {/* Chart segment */}
+                   <div className="lg:col-span-8 bg-slate-50/35 dark:bg-slate-950/10 border border-slate-100 dark:border-slate-850 p-4 rounded-2xl flex flex-col justify-between">
+                     <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+                       <div className="flex items-center gap-1.5">
+                         <TrendingUp size={14} className="text-indigo-500" />
+                         <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                           {performanceInterval === 'daily' ? "7-Day Volatility Trend" : performanceInterval === 'weekly' ? "4-Week Revenue vs Expenses" : "6-Month Profit Track"}
+                         </span>
+                       </div>
+                       <span className="text-[9px] font-bold text-slate-400">Interactive Cashflow Linechart</span>
+                     </div>
+
+                     <div className="h-[180px] w-full">
+                       <ResponsiveContainer width="100%" height="100%">
+                         <LineChart data={activeChartData} margin={{ top: 5, right: 10, left: -22, bottom: 0 }}>
+                           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:hidden" />
+                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" className="hidden dark:block" />
+                           <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} stroke="#94a3b8" />
+                           <YAxis tick={{ fontSize: 9, fill: '#64748b' }} stroke="#94a3b8" />
+                           <Tooltip 
+                             contentStyle={{
+                               backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                               borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                               borderRadius: '12px',
+                               fontSize: '11px',
+                               color: theme === 'dark' ? '#f8fafc' : '#0f172a'
+                             }}
+                           />
+                           <Line type="monotone" dataKey="Revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} name="Sales" />
+                           <Line type="monotone" dataKey="Expenses" stroke="#f43f5e" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 2 }} name="Expenses" />
+                           <Line type="monotone" dataKey="Profit" stroke="#6366f1" strokeWidth={1.5} dot={{ r: 1 }} name="Profit" />
+                         </LineChart>
+                       </ResponsiveContainer>
+                     </div>
+                   </div>
+
+                   {/* Margin Analysis Progress Box */}
+                   <div className="lg:col-span-4 bg-slate-50/50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                     <div className="text-center pb-2 border-b border-slate-100 dark:border-slate-800 mb-3">
+                       <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Retention Margin Rate</span>
+                     </div>
+
+                     <div className="flex flex-col items-center justify-center py-2">
+                       <div className="relative flex items-center justify-center w-24 h-24">
+                         {/* Minimalist Visual Circular Progress Representation */}
+                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                           <path
+                             className="text-slate-200 dark:text-slate-800"
+                             strokeWidth="3"
+                             stroke="currentColor"
+                             fill="none"
+                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                           />
+                           <path
+                             className="text-indigo-600 dark:text-indigo-400 transition-all duration-1000"
+                             strokeDasharray={`${netMarginClamped}, 100`}
+                             strokeWidth="3.2"
+                             strokeLinecap="round"
+                             stroke="currentColor"
+                             fill="none"
+                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                           />
+                         </svg>
+                         <div className="absolute flex flex-col items-center justify-center">
+                           <span className="text-xl font-extrabold text-slate-850 dark:text-white leading-none">
+                             {netMarginPct}%
+                           </span>
+                           <span className="text-[7.5px] uppercase tracking-widest text-slate-400 font-bold mt-1">Margin</span>
+                         </div>
+                       </div>
+                     </div>
+
+                     <div className="space-y-1.5 mt-3 text-center">
+                       <span className={`text-xs font-bold ${pulseFeedback.color} block`}>
+                         {pulseFeedback.title}
+                       </span>
+                       <p className="text-[10px] text-slate-450 leading-normal">
+                         {pulseFeedback.desc}
+                       </p>
+                     </div>
                    </div>
                  </div>
                </div>
              );
           })()}
+
           
           {/* Business Split Action fast money tracker layout */}
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-sm">
