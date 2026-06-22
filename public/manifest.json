@@ -62,14 +62,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Comfort Budgeting Mobile Dashboard"
+      "label": "Comfort Finance Suite Mobile Dashboard"
     },
     {
       "src": "/comfort_logo_brand.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Comfort Budgeting Desktop Suite"
+      "label": "Comfort Finance Suite Desktop"
     }
   ]
 }

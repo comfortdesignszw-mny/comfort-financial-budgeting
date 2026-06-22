@@ -21,7 +21,8 @@ import HRSection from './components/HRSection';
 import SchedulerSection from './components/SchedulerSection';
 import LocalNotificationsManager from './components/LocalNotificationsManager';
 import BusinessLegalDocs from './components/BusinessLegalDocs';
-import comfortLogo from './assets/images/comfort_logo_brand_1779617398401.png';
+import comfortLogo from './assets/images/comfort_logo_brand_1782165247496.jpg';
+import { saveToIndexedDB, loadFromIndexedDB } from './db/comfortDb';
 
 export default function App() {
   const { isConfigured, refreshConfig, lock } = useAppLock();
@@ -280,6 +281,9 @@ export default function App() {
   // Sync back to localstorage whenever data state gets modified
   useEffect(() => {
     localStorage.setItem('comfortBudgetingData', JSON.stringify(data));
+    // Also save to Dexie IndexedDB in the background for offline durability
+    saveToIndexedDB(data);
+
     // Also sync local profiling fields
     setProfileName(data.profile.name);
     setProfileEmail(data.profile.email);
@@ -291,6 +295,41 @@ export default function App() {
     setCompanyEmail(data.profile.companyEmail || '');
     setCompanyLogo(data.profile.companyLogo || '');
   }, [data]);
+
+  // Load from Dexie IndexedDB on startup as a fail-safe backup to localStorage
+  useEffect(() => {
+    async function initIndexedDBOfflineBackup() {
+      try {
+        const dbBackup = await loadFromIndexedDB();
+        if (dbBackup) {
+          const stored = localStorage.getItem('comfortBudgetingData');
+          if (!stored) {
+            console.log('[Comfort App] LocalStorage was empty or wiped. Restoring full offline backup from IndexedDB...');
+            setData(dbBackup);
+            setNotification({
+              title: 'Offline Data Recovered ⚡',
+              message: 'Comfort Finance Suite successfully restored your data securely from the browser sandbox IndexedDB.',
+              type: 'success'
+            });
+          } else {
+            // Keep IndexedDB synchronized with localStorage
+            await saveToIndexedDB(JSON.parse(stored));
+          }
+        } else {
+          // No backup found yet, store the initial sample data or local storage currently present
+          const stored = localStorage.getItem('comfortBudgetingData');
+          if (stored) {
+            await saveToIndexedDB(JSON.parse(stored));
+          } else {
+            await saveToIndexedDB(data);
+          }
+        }
+      } catch (err) {
+        console.error('[Comfort App] Failed to initialize offline database synchronization:', err);
+      }
+    }
+    initIndexedDBOfflineBackup();
+  }, []);
 
   // Synchronize dynamic local data changes across concurrent windows/tabs as first source of truth
   useEffect(() => {
@@ -1452,7 +1491,7 @@ export default function App() {
               <div className="flex items-center gap-2.5">
                 <img
                   src={comfortLogo}
-                  alt="Comfort Budgeting Logo"
+                  alt="Comfort Finance Suite Logo"
                   className="w-8 h-8 object-cover rounded-lg border border-teal-500/20"
                   referrerPolicy="no-referrer"
                 />

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'comfort-budgeting-v5';
+const CACHE_NAME = 'comfort-finance-suite-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -90,7 +90,7 @@ self.addEventListener('fetch', (event) => {
         if (event.request.headers.get('accept')?.includes('text/html')) {
           return caches.match('/index.html', { ignoreSearch: true });
         }
-        return new Response('Comfort Budgeting: Offline Resource Unavailable', {
+        return new Response('Comfort Finance Suite: Offline Resource Unavailable', {
           status: 503,
           statusText: 'Service Unavailable',
           headers: new Headers({ 'Content-Type': 'text/plain' })
