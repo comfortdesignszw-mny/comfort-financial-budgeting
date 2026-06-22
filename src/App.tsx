@@ -146,6 +146,13 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppInstallable, setIsAppInstallable] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [dismissedInstallBanner, setDismissedInstallBanner] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('comfort_dismiss_install_banner') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [pwaInstalledStatus, setPwaInstalledStatus] = useState<boolean>(() => {
     try {
       return window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
@@ -970,6 +977,73 @@ export default function App() {
             </div>
           </div>
 
+          {/* Premium PWA Install Announcement Banner */}
+          <AnimatePresence>
+            {!pwaInstalledStatus && !dismissedInstallBanner && (
+              <motion.div
+                initial={{ opacity: 0, y: -15, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, height: 0, y: -20, transition: { duration: 0.2 } }}
+                className="mb-8 p-5 bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 border border-teal-500/35 rounded-2xl shadow-xl relative overflow-hidden text-white group"
+              >
+                {/* Visual ambient light decoration */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-teal-500/15 transition-all duration-500" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -ml-8 -mb-8 pointer-events-none" />
+
+                <div className="flex flex-col md:flex-row items-center justify-between gap-5 relative z-10">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+                    <div className="p-2.5 bg-teal-500/10 border border-teal-500/35 rounded-xl shrink-0 shadow-inner">
+                      <img
+                        src={comfortLogo}
+                        alt="Comfort Finance Suite Native Icon"
+                        className="w-12 h-12 object-cover rounded-xl border border-teal-500/20"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <span className="text-[9px] bg-teal-500 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                          Native App Upgrade
+                        </span>
+                        <span className="text-[9px] bg-slate-800 text-slate-350 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Offline Sandbox Active
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-extrabold text-slate-100 tracking-tight mt-1.5 leading-tight">
+                        Comfort Finance Suite is Installable on Your Device!
+                      </h3>
+                      <p className="text-[11px] text-slate-350 leading-relaxed mt-1 max-w-2xl">
+                        Unlocks full-screen viewports without browser clutter, beautiful workspace dock icons, premium system launch integration, and hardened local IndexedDB offline storage durability.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-center md:justify-end border-t border-white/5 pt-4 md:border-none md:pt-0">
+                    <button
+                      onClick={() => {
+                        try {
+                          localStorage.setItem('comfort_dismiss_install_banner', 'true');
+                        } catch (e) {}
+                        setDismissedInstallBanner(true);
+                      }}
+                      className="px-3 py-1.5 hover:bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition duration-200 cursor-pointer"
+                    >
+                      Maybe Later
+                    </button>
+                    <button
+                      onClick={handleInstallApp}
+                      className="px-4 py-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-lg text-xs font-extrabold transition duration-200 shadow-md shadow-teal-500/10 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Sparkles size={12} className="shrink-0 fill-slate-950" />
+                      <span>{isAppInstallable ? 'Install PWA App' : 'See How to Install'}</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Workspace conditional routing */}
           {dataSpace === 'personal' && (
             <PersonalSection 
@@ -1386,6 +1460,98 @@ export default function App() {
                         </button>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Desktop & Mobile App Manager Panel */}
+                <div className="bg-gradient-to-br from-slate-900 via-teal-980 to-slate-950 border border-teal-500/20 rounded-2xl p-6 shadow-md text-white col-span-1 lg:col-span-3 space-y-5 animate-in fade-in duration-300">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/25">
+                        <Smartphone size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-slate-100 text-sm">Native Companion App Manager</h4>
+                        <p className="text-[10px] text-slate-400">Manage cross-platform native client integrations</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1 text-[9px] font-black uppercase rounded-full tracking-wider flex items-center gap-1.5 ${
+                        pwaInstalledStatus 
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${pwaInstalledStatus ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                        {pwaInstalledStatus ? 'Standalone App Client Active' : 'Running via Web Browser'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+                    <div className="p-3.5 bg-white/5 border border-white/5 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-teal-400 tracking-wider">Device OS / Type</span>
+                      <p className="text-xs font-semibold text-slate-200">
+                        {platformInfo.isIOS ? 'Apple iOS Mobile' : platformInfo.isAndroid ? 'Google Android SDK' : 'Desktop Computer / PC'}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-white/5 border border-white/5 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-teal-400 tracking-wider">Browser Environment</span>
+                      <p className="text-xs font-semibold text-slate-200">
+                        {platformInfo.isChrome ? 'Chromium Engine' : platformInfo.isSafari ? 'Apple WebKit (Safari)' : platformInfo.isFirefox ? 'Gecko (Firefox)' : 'Default Browser'}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-white/5 border border-white/5 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-teal-400 tracking-wider">Asset Integration</span>
+                      <p className="text-xs font-semibold text-slate-200">Hardened Offline (IndexedDB)</p>
+                    </div>
+
+                    <div className="p-3.5 bg-white/5 border border-white/5 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-teal-400 tracking-wider">Launch Capabilities</span>
+                      <p className="text-xs font-semibold text-slate-200">Workspace Quick Shortcuts</p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-350 leading-relaxed font-semibold">
+                    Installing Comfort Finance Suite places a native shortcut directly into your device's home screen launcher, desktop dock, or taskbar. It runs inside an edge-optimized full-height sandboxed window, supporting automatic assets retrieval with zero slow load buffers.
+                  </p>
+
+                  <div className="pt-2 border-t border-white/5 flex flex-col sm:flex-row items-center gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          localStorage.removeItem('comfort_dismiss_install_banner');
+                        } catch (e) {}
+                        setDismissedInstallBanner(false);
+                        setNotification({
+                          title: 'Prompt Cache Reset! 🔄',
+                          message: 'The native installation banner and automated instructions prompts have been restored successfully. Go to the dashboard room to review!',
+                          type: 'success'
+                        });
+                      }}
+                      className="w-full sm:w-auto px-4 py-2 hover:bg-white/5 border border-white/10 text-xs font-bold text-slate-350 hover:text-white rounded-xl transition duration-200 cursor-pointer"
+                    >
+                      Reset Prompt Memory
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleInstallApp}
+                      className="w-full sm:w-auto px-4 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold rounded-xl text-xs flex justify-center items-center gap-1.5 cursor-pointer shadow-md shadow-teal-500/10 transition duration-200"
+                    >
+                      {pwaInstalledStatus ? (
+                        <>
+                          <Check size={14} /> Registered Standalone
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} className="fill-slate-950" /> {isAppInstallable ? 'Install Native App' : 'View Install Guide'}
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
 
