@@ -36,7 +36,7 @@ export function useLocalNotifications(data: AppData) {
             try {
               new Notification('Reminder: ' + event.title, {
                 body: `Your scheduled ${event.category} is due!`,
-                icon: '/comfort_logo_brand.png' // fallback icon
+                icon: '/comfort_logo_brand.jpg' // fallback icon
               });
               notifiedEvents[event.id] = true;
             } catch (err) {

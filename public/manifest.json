@@ -15,21 +15,21 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/comfort_logo_brand.png",
+      "src": "/comfort_logo_brand.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/comfort_logo_brand.png",
+      "src": "/comfort_logo_brand.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/comfort_logo_brand.png",
+      "src": "/comfort_logo_brand.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "maskable"
     }
   ],
@@ -39,35 +39,35 @@
       "short_name": "Personal",
       "description": "Open your personal budgeting suite and transactions list",
       "url": "/?space=personal&source=shortcut",
-      "icons": [{ "src": "/comfort_logo_brand.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/comfort_logo_brand.jpg", "sizes": "192x192", "type": "image/jpeg" }]
     },
     {
       "name": "Business Workspace",
       "short_name": "Business",
       "description": "Log sales, review runaways, and track corporate investments",
       "url": "/?space=business&source=shortcut",
-      "icons": [{ "src": "/comfort_logo_brand.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/comfort_logo_brand.jpg", "sizes": "192x192", "type": "image/jpeg" }]
     },
     {
       "name": "End-of-Month Report",
       "short_name": "Reports",
       "description": "Export reports and view monthly financial snapshots",
       "url": "/?space=reports&source=shortcut",
-      "icons": [{ "src": "/comfort_logo_brand.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/comfort_logo_brand.jpg", "sizes": "192x192", "type": "image/jpeg" }]
     }
   ],
   "screenshots": [
     {
-      "src": "/comfort_logo_brand.png",
+      "src": "/comfort_logo_brand.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Comfort Finance Suite Mobile Dashboard"
     },
     {
-      "src": "/comfort_logo_brand.png",
+      "src": "/comfort_logo_brand.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Comfort Finance Suite Desktop"
     }

@@ -146,6 +146,7 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppInstallable, setIsAppInstallable] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [isInIframe, setIsInIframe] = useState(false);
   const [dismissedInstallBanner, setDismissedInstallBanner] = useState<boolean>(() => {
     try {
       return localStorage.getItem('comfort_dismiss_install_banner') === 'true';
@@ -193,6 +194,7 @@ export default function App() {
       isDesktop
     });
 
+    setIsInIframe(window.self !== window.top);
     setPwaInstalledStatus(isStandalone);
 
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -1005,17 +1007,30 @@ export default function App() {
                         <span className="text-[9px] bg-teal-500 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">
                           Native App Upgrade
                         </span>
-                        <span className="text-[9px] bg-slate-800 text-slate-350 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Offline Sandbox Active
-                        </span>
+                        {isInIframe ? (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-505/30 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            Browser Frame Active
+                          </span>
+                        ) : (
+                          <span className="text-[9px] bg-slate-800 text-slate-350 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Offline Sandbox Active
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-sm font-extrabold text-slate-100 tracking-tight mt-1.5 leading-tight">
                         Comfort Finance Suite is Installable on Your Device!
                       </h3>
-                      <p className="text-[11px] text-slate-350 leading-relaxed mt-1 max-w-2xl">
-                        Unlocks full-screen viewports without browser clutter, beautiful workspace dock icons, premium system launch integration, and hardened local IndexedDB offline storage durability.
-                      </p>
+                      {isInIframe ? (
+                        <p className="text-[11.5px] text-amber-100/90 leading-relaxed mt-1.5 max-w-2xl bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-xl">
+                          ⚠️ <strong>AI Studio sandboxing active:</strong> Your browser restricts direct app installation inside this chat iframe wrapper. Click the <strong>"Open in New Tab"</strong> button in the top-right corner to open the app directly, then easily install it natively from your browser's address bar or option menu!
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-slate-350 leading-relaxed mt-1 max-w-2xl">
+                          Unlocks full-screen viewports without browser clutter, beautiful workspace dock icons, premium system launch integration, and hardened local IndexedDB offline storage durability.
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1890,6 +1905,17 @@ export default function App() {
 
               {/* Instructions List */}
               <div className="py-4 space-y-4 overflow-y-auto text-xs text-slate-650 dark:text-slate-350">
+                {isInIframe && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl space-y-1.5 animate-pulse">
+                    <span className="font-bold text-amber-600 dark:text-amber-400 text-xs flex items-center gap-1.5">
+                      ⚠️ Sandbox Frame Detected
+                    </span>
+                    <p className="text-[10.5px] leading-relaxed text-slate-700 dark:text-slate-200 font-medium">
+                      Direct PWA installations are blocked by modern browsers (Chrome/Android/Firefox) inside iframe code viewers. To install Comfort Finance Suite to your device, click the <strong className="text-amber-600 dark:text-amber-400">"Open in New Tab"</strong> button in the top right corner of the window. Any data logged here will remain safe!
+                    </p>
+                  </div>
+                )}
+
                 <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed text-[11px] font-sans">
                   Comfort Finance Suite is customized for your environment. Install it in seconds to unlock full-screen viewports, quick long-press workspace shortcuts, and total offline readiness.
                 </p>
