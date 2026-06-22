@@ -3,7 +3,6 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/comfort_logo_brand.png',
-  '/comfort_logo_brand.jpg',
   '/manifest.json'
 ];
 

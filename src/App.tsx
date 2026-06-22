@@ -21,7 +21,7 @@ import HRSection from './components/HRSection';
 import SchedulerSection from './components/SchedulerSection';
 import LocalNotificationsManager from './components/LocalNotificationsManager';
 import BusinessLegalDocs from './components/BusinessLegalDocs';
-import comfortLogo from './assets/images/comfort_logo_brand_1782165247496.jpg';
+import comfortLogo from './assets/images/comfort_logo_brand.png';
 import { saveToIndexedDB, loadFromIndexedDB } from './db/comfortDb';
 
 export default function App() {
