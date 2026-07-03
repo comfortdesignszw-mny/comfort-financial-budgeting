@@ -93,6 +93,7 @@ export default function PersonalSection({ data, onUpdateData, currency, showToas
   const totalSavingsAmount = accumulatedSavings + currentMonthSavings;
   const savingsTarget = data.profile.savingsTarget || 500;
   const savingsPercent = Math.min(100, (totalSavingsAmount / savingsTarget) * 100);
+  const activePersonalProjectsCount = (data.projects || []).filter(p => p.reflectInPersonal).length;
 
   const savingsTrendData = React.useMemo(() => {
     const history = data.profile.savingsHistory || [];
@@ -471,19 +472,29 @@ export default function PersonalSection({ data, onUpdateData, currency, showToas
           </div>
 
           {/* Quick Act buttons */}
-          <div className="flex justify-end gap-3 mt-4">
-            <button 
-              onClick={() => openAddTxModal('income')}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 text-sm font-medium transition shadow-sm cursor-pointer"
-            >
-              <Plus size={16} /> Add Income
-            </button>
-            <button 
-              onClick={() => openAddTxModal('expense')}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 text-sm font-medium transition shadow-sm cursor-pointer"
-            >
-              <Plus size={16} /> Add Expense
-            </button>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-4">
+            <div>
+              {activePersonalProjectsCount > 0 && (
+                <div className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60 rounded-lg text-xs font-semibold flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping shrink-0" />
+                  {activePersonalProjectsCount} Active Personal Project{activePersonalProjectsCount === 1 ? '' : 's'}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => openAddTxModal('income')}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 text-sm font-medium transition shadow-sm cursor-pointer"
+              >
+                <Plus size={16} /> Add Income
+              </button>
+              <button 
+                onClick={() => openAddTxModal('expense')}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 text-sm font-medium transition shadow-sm cursor-pointer"
+              >
+                <Plus size={16} /> Add Expense
+              </button>
+            </div>
           </div>
 
           {/* Monthly Performance Card */}

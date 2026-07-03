@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Wallet, UserCog, Download, Upload, Trash2, Save, 
   Menu, X, CheckCircle, ShieldAlert, BadgeDollarSign, Info, CheckCircle2, Heart, Scale, ShieldCheck,
-  Sun, Moon, Sparkles, Smartphone, Laptop, Check, Calendar, Image
+  Sun, Moon, Sparkles, Smartphone, Laptop, Check, Calendar, Image, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, CurrencyType } from './types';
@@ -21,6 +21,7 @@ import HRSection from './components/HRSection';
 import SchedulerSection from './components/SchedulerSection';
 import LocalNotificationsManager from './components/LocalNotificationsManager';
 import BusinessLegalDocs from './components/BusinessLegalDocs';
+import ProjectManagementSection from './components/ProjectManagementSection';
 import comfortLogo from './assets/images/comfort_logo_brand_1782165247496.jpg';
 import { saveToIndexedDB, loadFromIndexedDB } from './db/comfortDb';
 
@@ -89,7 +90,7 @@ export default function App() {
   });
 
   // Active workspace section
-  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'hr' | 'scheduler' | 'profile' | 'legal_docs'>('business');
+  const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'hr' | 'projects' | 'scheduler' | 'profile' | 'legal_docs'>('business');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Redirect to Scheduler space immediately if a shared schedule deep-link is opened
@@ -684,6 +685,8 @@ export default function App() {
     ? 'Business Section (CashFlow Simple)' 
     : dataSpace === 'hr'
     ? 'Human Resources'
+    : dataSpace === 'projects'
+    ? 'Project Management'
     : dataSpace === 'scheduler'
     ? 'Sandbox Calendar & Notes'
     : dataSpace === 'legal_docs'
@@ -836,6 +839,21 @@ export default function App() {
               <div className="text-xs">
                 <span className="block font-bold">Human Resources</span>
                 <span className="text-[9px] text-slate-400">Team & Payroll</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setDataSpace('projects'); setIsMobileSidebarOpen(false); }}
+              className={`w-full text-left p-3 rounded-xl transition-all font-semibold flex items-center gap-3 cursor-pointer ${
+                dataSpace === 'projects'
+                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 ring-1 ring-indigo-500/20 shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <Activity size={18} className={dataSpace === 'projects' ? 'text-indigo-500' : 'text-slate-400'} />
+              <div className="text-xs">
+                <span className="block font-bold">Project Management</span>
+                <span className="text-[9px] text-slate-400">Track & Manage Projects</span>
               </div>
             </button>
 
@@ -1081,6 +1099,15 @@ export default function App() {
 
           {dataSpace === 'hr' && (
             <HRSection 
+              data={data}
+              onUpdateData={handleUpdateData}
+              currency={data.profile.currency}
+              showToast={showToast}
+            />
+          )}
+
+          {dataSpace === 'projects' && (
+            <ProjectManagementSection 
               data={data}
               onUpdateData={handleUpdateData}
               currency={data.profile.currency}

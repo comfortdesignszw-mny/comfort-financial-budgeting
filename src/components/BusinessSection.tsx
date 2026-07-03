@@ -202,6 +202,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
   
   const businessOwned = assetsSum + stockProductsSum;
   const runwayStats = calculateBusinessRunway(businessTransactions, cashOnHand);
+  const activeBusinessProjectsCount = (data.projects || []).filter(p => p.reflectInBusiness).length;
 
   // Filter current month transactions for traffic lights
   const now = new Date();
@@ -1800,6 +1801,14 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
                         {formatCurrency(stockProductsSum, currency)}
                       </span>
                     </div>
+                    {activeBusinessProjectsCount > 0 && (
+                      <div className="flex justify-between border-t border-slate-100 dark:border-slate-800 pt-1 mt-1">
+                        <span>🚀 Active Business Projects:</span>
+                        <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          {activeBusinessProjectsCount}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -32,6 +32,7 @@ export interface PersonalTransaction {
   description: string;
   amount: number;
   category: string; // matches either PersonalIncomeCategory or PersonalExpenseCategory
+  customCategoryName?: string;
   date: string;
   notes?: string;
   createdAt: string;
@@ -245,6 +246,41 @@ export interface LegalDocument {
   fileSize?: string;
 }
 
+// Project Management Types
+export type ProjectStatus = 'Planning' | 'In Progress' | 'Completed' | 'On Hold';
+export type ProjectMode = 'Single project' | 'Phased Project';
+export type ProjectPriority = 'High' | 'Medium' | 'Low';
+
+export interface ProjectPhase {
+  id: string;
+  name: string;
+  budgetRequired: number;
+  budgetDisbursed: number;
+  status: ProjectStatus;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  type: string; // e.g., Tech, Construction
+  status: ProjectStatus;
+  priority?: ProjectPriority;
+  totalBudgetRequired: number;
+  totalBudgetDisbursed: number;
+  startDate: string;
+  targetEndDate: string;
+  mode: ProjectMode;
+  estimatedIncome: number;
+  trackProject: boolean;
+  reflectInBusiness: boolean;
+  reflectInPersonal: boolean;
+  phases?: ProjectPhase[];
+  createdAt: string;
+  isArchived?: boolean;
+}
+
 // Outer application state containing both Personal and Business configurations
 export interface AppData {
   profile: ProfileState;
@@ -267,6 +303,8 @@ export interface AppData {
   // HR Database
   hrEmployees?: HREmployee[];
   hrPayrolls?: HRPayroll[];
+  // Project Database
+  projects?: ProjectItem[];
   // Notetaker & Scheduler database
   notes?: FinancialNote[];
   events?: ScheduleEvent[];
