@@ -1642,7 +1642,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
                      </div>
 
                      <div className="h-[180px] w-full">
-                       <ResponsiveContainer width="100%" height="100%">
+                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                          <LineChart data={activeChartData} margin={{ top: 5, right: 10, left: -22, bottom: 0 }}>
                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:hidden" />
                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" className="hidden dark:block" />
@@ -2037,6 +2037,64 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
                 </div>
               );
             })()}
+          </div>
+
+          {/* Business Annual History Section */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm mt-8">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg mb-4 flex items-center gap-2">
+              <Calendar size={20} className="text-blue-500" />
+              Business Annual History
+            </h3>
+            <p className="text-sm text-slate-500 mb-6">Year-over-year total insights of income, expenses, and profits/loss for your business operations.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {(() => {
+                const annualData: Record<string, { income: number, expense: number }> = {};
+                
+                data.businessTransactions.forEach(tx => {
+                  const year = tx.date.split('-')[0];
+                  if (!annualData[year]) annualData[year] = { income: 0, expense: 0 };
+                  if (tx.type === 'sale') annualData[year].income += tx.amount;
+                  if (tx.type === 'expense') annualData[year].expense += tx.amount;
+                });
+
+                const sortedYears = Object.keys(annualData).sort((a, b) => Number(b) - Number(a));
+
+                if (sortedYears.length === 0) {
+                  return <div className="col-span-full text-center text-sm text-slate-500 py-8 italic border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">No yearly transaction records available yet.</div>;
+                }
+
+                return sortedYears.map(year => {
+                  const { income, expense } = annualData[year];
+                  const net = income - expense;
+                  const isProfit = net >= 0;
+                  
+                  return (
+                    <div key={year} className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                      <div className="text-lg font-extrabold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700 text-center">
+                        {year}
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">Total Income</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">+{formatCurrency(income, currency)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">Total Expenses</span>
+                          <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(expense, currency)}</span>
+                        </div>
+                        <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700/50 flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Net {isProfit ? 'Profit' : 'Loss'}</span>
+                          <span className={`font-black ${isProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {isProfit ? '+' : ''}{formatCurrency(net, currency)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           </div>
         </div>
       )}
@@ -2620,7 +2678,7 @@ export default function BusinessSection({ data, onUpdateData, currency, theme, s
                 </div>
 
                 <div className="h-[200px] w-full text-xs">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <LineChart
                       data={getLast6MonthsData()}
                       margin={{ top: 12, right: 12, left: -22, bottom: 0 }}

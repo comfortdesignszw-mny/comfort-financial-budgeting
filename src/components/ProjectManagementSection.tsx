@@ -713,7 +713,7 @@ export default function ProjectManagementSection({
                 </h3>
               </div>
               <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
@@ -773,7 +773,7 @@ export default function ProjectManagementSection({
                 <p className="text-xs text-slate-500">Cumulative funding velocity over time</p>
               </div>
               <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <LineChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <XAxis dataKey="date" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />

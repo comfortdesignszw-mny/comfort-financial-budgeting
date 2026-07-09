@@ -23,7 +23,12 @@ async function startServer() {
       const { projects } = req.body;
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
-      const prompt = `Analyze these projects and provide actionable recommendations, suggest tools/equipment needed, and estimate time span for completion if missing. Give a very brief high-level summary. Format the response beautifully using Markdown. 
+      const prompt = `You are an expert AI Project Assessor. Analyze these active projects and provide a review with the following strict sections for each project or overall:
+1. **AI Recommendations**: Actionable insights to improve budget velocity, efficiency, and project tracking.
+2. **Tools Suggestion**: Specific tools, software, or equipment needed to complete these projects efficiently.
+3. **Estimated Timelines**: Estimate the time span needed for completion for each project, especially if missing or unrealistic.
+
+Format the response beautifully using Markdown. Make it concise and easy to read.
 
 Projects Data:
 ${JSON.stringify(projects, null, 2)}`;
@@ -43,7 +48,7 @@ ${JSON.stringify(projects, null, 2)}`;
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: "spa",
     });
     app.use(vite.middlewares);

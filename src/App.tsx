@@ -22,6 +22,7 @@ import SchedulerSection from './components/SchedulerSection';
 import LocalNotificationsManager from './components/LocalNotificationsManager';
 import BusinessLegalDocs from './components/BusinessLegalDocs';
 import ProjectManagementSection from './components/ProjectManagementSection';
+import { useDailyNotifications } from './hooks/useDailyNotifications';
 import comfortLogo from './assets/images/comfort_logo_brand_1782165247496.jpg';
 import { saveToIndexedDB, loadFromIndexedDB } from './db/comfortDb';
 
@@ -92,6 +93,8 @@ export default function App() {
   // Active workspace section
   const [dataSpace, setDataSpace] = useState<'personal' | 'business' | 'hr' | 'projects' | 'scheduler' | 'profile' | 'legal_docs'>('business');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  useDailyNotifications(data);
 
   // Redirect to Scheduler space immediately if a shared schedule deep-link is opened
   useEffect(() => {
@@ -868,7 +871,7 @@ export default function App() {
             >
               <Calendar size={18} className={dataSpace === 'scheduler' ? 'text-blue-500' : 'text-slate-400'} />
               <div className="text-xs">
-                <span className="block font-bold">Notes & Scheduler</span>
+                <span className="block font-bold">Notes, Scheduler and Currency Exchange</span>
                 <span className="text-[9px] text-slate-400">Sandbox Calendar Suite</span>
               </div>
             </button>
