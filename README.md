@@ -1,9 +1,7 @@
 
-# Run and deploy your AI Studio app
+# Run and deploy your Comfort Finance Suite App
 
 This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/c63325bf-774f-4ab7-a1c1-cc655d0a3833
 
 ## Run Locally
 
